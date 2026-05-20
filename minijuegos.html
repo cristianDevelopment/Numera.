@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arcade Numérico - Numera</title>
+    
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>">
+
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header class="navbar">
+        <a href="index.html" class="brand" style="text-decoration: none; color: inherit;">
+            <i class="fa-solid fa-calculator logo-icon"></i>
+            <span class="brand-name">Numera</span>
+        </a>
+        
+        <nav class="nav-links">
+            <a href="mapa.html">APRENDER</a>
+            <a href="crusigrama.html">CRUCIGRAMA</a>
+            <a href="#" class="active">MINIJUEGOS</a>
+            <a onclick="resetProgress()" class="btn-reset-nav"><i class="fa-solid fa-rotate-right"></i> REINICIAR</a>
+        </nav>
+
+        <div class="user-stats">
+            <div class="stat" id="stat-xp"><i class="fa-solid fa-crown" style="color: #ffc800;"></i> <span id="xp-display">0</span> XP</div>
+            <div class="profile-pic">
+                <i class="fa-solid fa-user"></i>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-container" style="display: block;">
+        
+        <div class="arcade-header animate-slide-down">
+            <h1><i class="fa-solid fa-gamepad"></i> Zona Arcade</h1>
+            <p>Aplica tus conocimientos de métodos numéricos para superar estos retos y establecer un nuevo récord.</p>
+        </div>
+
+        <div class="games-grid animate-pop">
+            
+            <div class="game-card">
+                <div class="game-preview bg-snake">
+                    <i class="fa-solid fa-staff-snake"></i>
+                </div>
+                <div class="game-info">
+                    <h2>Serpientes y Raíces</h2>
+                    <p>Lanza los dados y sube por las iteraciones. Resuelve los cálculos de Bisección para subir por las escaleras, pero ¡cuidado con equivocarte en la tolerancia o resbalarás por la serpiente!</p>
+                    <a href="juego_serpientes.html" class="btn-play"><i class="fa-solid fa-play"></i> Jugar</a>
+                </div>
+            </div>
+
+            <div class="game-card">
+                <div class="game-preview bg-crush">
+                    <i class="fa-solid fa-gem"></i>
+                </div>
+                <div class="game-info">
+                    <h2>Matriz Crush</h2>
+                    <p>¡Despeja el tablero! Combina variables (X, Y, Z) y coeficientes de sistemas de ecuaciones lineales. Usa la Eliminación Gaussiana para generar combos explosivos.</p>
+                    <a href="juego_crush.html" class="btn-play"><i class="fa-solid fa-play"></i> Jugar</a>
+                </div>
+            </div>
+
+            <div class="game-card">
+                <div class="game-preview bg-platform">
+                    <i class="fa-solid fa-person-running"></i>
+                </div>
+                <div class="game-info">
+                    <h2>Salto Numérico</h2>
+                    <p>Ayuda al Iterauta a esquivar los Errores de Truncamiento. Salta entre plataformas usando derivadas (Newton-Raphson) para evitar caer al vacío de la divergencia.</p>
+                    <a href="juego_plataformas.html" class="btn-play"><i class="fa-solid fa-play"></i> Jugar</a>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            let currentLesson = parseInt(localStorage.getItem('numera_current_lesson')) || 1;
+            let xp = (currentLesson - 1) * 150; 
+            document.getElementById('xp-display').innerText = xp;
+        });
+
+        function resetProgress() {
+            if (confirm("¿Estás seguro de que quieres borrar todo tu progreso y volver a la Lección 1? Esta acción no se puede deshacer.")) {
+                localStorage.removeItem('numera_current_lesson');
+                window.location.href = "index.html";
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Numera - Aprende Métodos Numéricos</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="audio.js"></script>
+    <style>
+        .unit-section { margin-bottom: 50px; position: relative; padding: 30px 10px; border-radius: 30px; }
+        .unit-header { text-align: center; background: var(--white); padding: 15px 30px; border-radius: 20px; display: inline-block; margin-bottom: 30px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); border: 2px solid var(--grey-locked); width: 100%; max-width: 400px; }
+        .unit-header h2 { color: var(--primary-red); font-weight: 900; font-size: 24px; }
+        .unit-header p { color: var(--text-light); font-weight: 700; font-size: 14px; }
+
+        .bg-light-red { background-color: #ffeeee; border: 3px dashed #ffcccc; }
+        .bg-intense-red { background-color: var(--dark-red); border: 3px dashed #8a1717; }
+        .bg-intense-red .unit-header { border-color: #8a1717; }
+        .bg-intense-red .unit-header h2 { color: var(--dark-red); }
+        .bg-intense-red .path-line { background-color: #8a1717; }
+        .bg-intense-red .node-label { color: #ffffff; }
+        .bg-intense-red .node.locked { background-color: #e55b5b; border-color: #8a1717; color: #ffffff; }
+
+        .mascot-fixed { position: fixed; bottom: 20px; right: 20px; z-index: 100; display: flex; flex-direction: column; align-items: flex-end; pointer-events: none; }
+        .mascot-fixed .speech-bubble { background-color: var(--white); border: 2px solid var(--primary-red); border-radius: 15px; padding: 15px; font-size: 14px; font-weight: 700; color: var(--text-dark); position: relative; margin-bottom: 10px; box-shadow: 0 4px 10px rgba(229, 43, 43, 0.2); text-align: center; max-width: 200px; }
+        .mascot-fixed .speech-bubble::after { content: ''; position: absolute; bottom: -10px; right: 30px; border-width: 10px 10px 0; border-style: solid; border-color: var(--white) transparent transparent transparent; z-index: 2; }
+        .mascot-fixed .speech-bubble::before { content: ''; position: absolute; bottom: -13px; right: 28px; border-width: 12px 12px 0; border-style: solid; border-color: var(--primary-red) transparent transparent transparent; }
+        .mascot-fixed .mascot { font-size: 70px; margin-right: 10px; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.2)); }
+
+        @media (max-width: 900px) {
+            .mascot-fixed { bottom: 10px; right: 10px; }
+            .mascot-fixed .mascot { font-size: 50px; }
+            .mascot-fixed .speech-bubble { font-size: 12px; padding: 10px; max-width: 150px; }
+        }
+
+        /* RECOMPENSAS */
+        .reward-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.85); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; overflow-y: auto; padding: 40px 10px; }
+        .reward-overlay.active { opacity: 1; pointer-events: all; }
+        .reward-container { text-align: center; color: white; display: flex; flex-direction: column; align-items: center; margin: auto; }
+        
+        .chest-wrapper { cursor: pointer; transition: transform 0.1s; user-select: none; }
+        .chest-wrapper:active { transform: scale(0.9); }
+        .chest-wrapper.shake { animation: shake-chest 0.3s; }
+        .chest-icon { font-size: 120px; color: var(--gold); filter: drop-shadow(0 0 20px rgba(255,200,0,0.5)); margin-bottom: 20px; }
+        
+        .dots-container { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; }
+        .chest-dot { width: 15px; height: 15px; background: #555; border-radius: 50%; border: 2px solid #333; transition: 0.3s; }
+        .chest-dot.active { background: #58cc02; border-color: #fff; box-shadow: 0 0 10px #58cc02; }
+
+        @keyframes shake-chest { 0% { transform: translateX(0); } 25% { transform: translateX(-10px) rotate(-5deg); } 50% { transform: translateX(10px) rotate(5deg); } 75% { transform: translateX(-10px) rotate(-5deg); } 100% { transform: translateX(0); } }
+
+        .certificate-wrapper { display: none; flex-direction: column; align-items: center; }
+        .certificate-doc { background: #fff; color: #333; width: 750px; max-width: 95vw; padding: 40px 20px; border: 10px solid var(--gold); border-radius: 10px; text-align: center; box-shadow: 0 0 30px rgba(255,200,0,0.3); position: relative; background-image: url('data:image/svg+xml;utf8,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="40" fill="none" stroke="%23ffeb99" stroke-width="2" opacity="0.3"/></svg>'); }
+        .cert-title { font-size: 32px; color: var(--dark-red); margin-bottom: 10px; font-weight: 900; text-transform: uppercase;}
+        .cert-subtitle { font-size: 18px; color: #777; margin-bottom: 20px; }
+        .cert-name { font-size: 28px; font-weight: 700; color: #333; border-bottom: 2px solid #ccc; display: inline-block; padding: 0 20px; margin-bottom: 15px;}
+        .cert-text { font-size: 16px; line-height: 1.5; margin-bottom: 20px; padding: 0 10px;}
+        
+        .signature-section { margin-top: 20px; display: flex; flex-direction: column; align-items: center; }
+        .signature-pad { border: 2px dashed #ccc; background: #fafafa; cursor: crosshair; border-radius: 5px; touch-action: none;}
+        .signature-line { width: 300px; height: 2px; background: #333; margin-top: 5px; }
+        .signature-label { font-size: 14px; color: #777; margin-top: 5px; font-weight: bold;}
+        .btn-clean-sig { background: #f0f0f0; border: none; padding: 5px 15px; border-radius: 5px; cursor: pointer; margin-top: 10px; font-weight: bold; color: #555;}
+        
+        .cert-actions { display: flex; gap: 15px; margin-top: 30px; margin-bottom: 40px; flex-wrap: wrap; justify-content: center;}
+        .btn-pdf { background: var(--primary-red); color: white; border: none; padding: 15px 30px; font-size: 16px; font-weight: bold; border-radius: 30px; cursor: pointer; box-shadow: 0 5px 0 var(--dark-red); }
+        .btn-pdf:active { transform: translateY(5px); box-shadow: 0 0 0 transparent; }
+        .btn-close-cert { background: #555; color: white; border: none; padding: 15px 30px; font-size: 16px; font-weight: bold; border-radius: 30px; cursor: pointer; }
+
+        /* Botón Reiniciar en Nav */
+        .btn-reset-nav { color: #ff4b4b; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn-reset-nav:hover { color: var(--dark-red); transform: scale(1.05); }
+
+    </style>
+</head>
+<body>
+
+    <header class="navbar">
+        <a href="index.html" class="brand" style="text-decoration: none; color: inherit;">
+            <i class="fa-solid fa-calculator logo-icon"></i>
+            <span class="brand-name">Numera</span>
+        </a>
+        
+       <nav class="nav-links">
+            <a href="mapa.html">APRENDER</a>
+            <a href="crusigrama.html">CRUCIGRAMA</a>
+            <a href="minijuegos.html">MINIJUEGOS</a>
+            <a onclick="resetProgress()" class="btn-reset-nav"><i class="fa-solid fa-rotate-right"></i> REINICIAR</a>
+        </nav>
+
+        <div class="user-stats">
+            <div class="stat" id="stat-xp"><i class="fa-solid fa-crown" style="color: #ffc800;"></i> 0 XP</div>
+            <div class="profile-pic">
+                <i class="fa-solid fa-user"></i>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-container">
+        
+        <div class="path-board">
+            <h1 class="board-title animate-slide-down">¡TU CAMINO HACIA EL DOMINIO NUMÉRICO!</h1>
+            
+            <div class="unit-section" style="text-align: center;">
+                <div class="unit-header"><h2>UNIDAD 1</h2><p>Reconocimiento y Conceptos</p></div>
+                <div class="path-wrapper">
+                    <div class="path-line"></div>
+                    <div id="node-1-container" class="node-container animate-pop" style="animation-delay: 0.1s;"><div class="node locked"><i class="fa-solid fa-lock"></i></div><span class="node-label">LECCIÓN 1<br>Conceptos Básicos</span></div>
+                    <div id="node-2-container" class="node-container animate-pop" style="animation-delay: 0.2s; margin-top: 40px;"><div class="node locked"><i class="fa-solid fa-lock"></i></div><span class="node-label">LECCIÓN 2<br>Estructuras Numéricas</span></div>
+                    <div id="node-3-container" class="node-container animate-pop" style="animation-delay: 0.3s;"><div class="node locked"><i class="fa-solid fa-lock"></i></div><span class="node-label">LECCIÓN 3<br>Identificación de Métodos</span></div>
+                    <div id="node-4-container" class="node-container animate-pop" style="animation-delay: 0.4s; margin-top: 40px;"><div class="node locked"><i class="fa-solid fa-lock"></i></div><span class="node-label">LECCIÓN 4<br>Lógica e Iteración</span></div>
+                    <div id="node-5-container" class="node-container animate-pop" style="animation-delay: 0.5s;"><div class="node locked"><i class="fa-solid fa-lock"></i></div><span class="node-label">LECCIÓN 5<br>Aplicación Práctica</span></div>
+                </div>
+            </div>
+
+            <div class="unit-section bg-light-red" style="text-align: center;">
+                <div class="unit-header" style="border-color: #ffcccc;"><h2>UNIDAD 2</h2><p>Dominando los Algoritmos</p></div>
+                <div class="path-wrapper">
+                    <div class="path-line" style="background-color: #ffcccc;"></div>
+                    <div id="node-6-container" class="node-container animate-pop" style="animation-delay: 0.1s;"><div class="node locked" style="border-color: #ffcccc; background: white;"><i class="fa-solid fa-lock"></i></div><span class="node-label">LECCIÓN 6<br>Método de Bisección</span></div>
+                    <div id="node-7-container" class="node-container animate-pop" style="animation-delay: 0.2s; margin-top: 40px;"><div class="node locked" style="border-color: #ffcccc; background: white;"><i class="fa-solid fa-lock"></i></div><span class="node-label">LECCIÓN 7<br>Newton-Raphson</span></div>
+                    <div id="node-8-container" class="node-container animate-pop" style="animation-delay: 0.3s;"><div class="node locked" style="border-color: #ffcccc; background: white;"><i class="fa-solid fa-lock"></i></div><span class="node-label">LECCIÓN 8<br>Eliminación Gaussiana</span></div>
+                    <div id="node-9-container" class="node-container animate-pop" style="animation-delay: 0.4s; margin-top: 40px;"><div class="node locked" style="border-color: #ffcccc; background: white;"><i class="fa-solid fa-lock"></i></div><span class="node-label">LECCIÓN 9<br>Iterativos: Gauss-Seidel</span></div>
+                    <div id="node-10-container" class="node-container animate-pop" style="animation-delay: 0.5s;"><div class="node locked" style="border-color: #ffcccc; background: white;"><i class="fa-solid fa-lock"></i></div><span class="node-label">LECCIÓN 10<br>Integración Numérica</span></div>
+                </div>
+            </div>
+
+            <div class="unit-section bg-intense-red" style="text-align: center;">
+                <div class="unit-header"><h2>UNIDAD 3</h2><p>Aplicación de Métodos (Nivel Difícil)</p></div>
+                <div class="path-wrapper">
+                    <div class="path-line"></div>
+                    <div id="node-11-container" class="node-container animate-pop" style="animation-delay: 0.1s;"><div class="node locked"><i class="fa-solid fa-lock"></i></div><span class="node-label">LECCIÓN 11<br>Reto: Raíces</span></div>
+                    <div id="node-12-container" class="node-container animate-pop" style="animation-delay: 0.2s; margin-top: 40px;"><div class="node locked"><i class="fa-solid fa-lock"></i></div><span class="node-label">LECCIÓN 12<br>Reto: Sistemas</span></div>
+                    <div id="node-13-container" class="node-container animate-pop" style="animation-delay: 0.3s;"><div class="node locked"><i class="fa-solid fa-lock"></i></div><span class="node-label">LECCIÓN 13<br>Reto: Áreas</span></div>
+                    <div id="node-14-container" class="node-container animate-pop" style="animation-delay: 0.4s; margin-top: 40px;"><div class="node locked"><i class="fa-solid fa-lock"></i></div><span class="node-label">LECCIÓN 14<br>Problemas Mixtos</span></div>
+                    <div id="node-15-container" class="node-container animate-pop" style="animation-delay: 0.5s;"><div class="node locked"><i class="fa-solid fa-lock"></i></div><span class="node-label">LECCIÓN 15<br>Examen Final</span></div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <div class="mascot-fixed">
+        <div class="speech-bubble animate-bounce-bubble" id="mascot-bubble">
+            ¡Cargando datos...<br>Preparando tu camino!
+        </div>
+        <div class="mascot animate-float">🤖</div>
+    </div>
+
+    <div id="reward-overlay" class="reward-overlay">
+        <div class="reward-container">
+            <div id="chest-phase" class="chest-wrapper" onclick="hitChest()">
+                <h2 style="font-size: 24px; margin-bottom: 20px;">¡UNIDAD COMPLETADA!</h2>
+                <i class="fa-solid fa-gem chest-icon" id="chest-icon"></i>
+                <div class="dots-container">
+                    <div class="chest-dot" id="dot-1"></div>
+                    <div class="chest-dot" id="dot-2"></div>
+                    <div class="chest-dot" id="dot-3"></div>
+                </div>
+                <p style="font-weight: 700;">Toca el diamante 3 veces para abrir tu recompensa</p>
+            </div>
+            <div id="certificate-phase" class="certificate-wrapper">
+                <div class="certificate-doc" id="pdf-content">
+                    <i class="fa-solid fa-medal" style="font-size: 60px; color: var(--gold); margin-bottom: 10px;"></i>
+                    <h1 class="cert-title">Certificado de Excelencia</h1>
+                    <p class="cert-subtitle">Otorgado a nuestro mejor estudiante:</p>
+                    <div class="cert-name">Iterauta Experto</div>
+                    <p class="cert-text">Por haber demostrado habilidades excepcionales, lógica impecable y dedicación sobresaliente al completar satisfactoriamente todos los retos de la <strong><span id="cert-unit-name">Unidad X</span></strong> en la plataforma Numera.</p>
+                    <div class="signature-section">
+                        <canvas id="signature-pad" class="signature-pad" width="300" height="100"></canvas>
+                        <div class="signature-line"></div>
+                        <div class="signature-label">Firma del Estudiante</div>
+                        <button class="btn-clean-sig" onclick="clearSignature()" data-html2canvas-ignore="true"><i class="fa-solid fa-eraser"></i> Limpiar Firma</button>
+                    </div>
+                </div>
+                <div class="cert-actions">
+                    <button class="btn-pdf" onclick="generatePDF()"><i class="fa-solid fa-file-pdf"></i> Guardar PDF</button>
+                    <button class="btn-close-cert" onclick="closeReward()"><i class="fa-solid fa-check"></i> Continuar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Numera | Aprende Métodos Numéricos de forma interactiva</p>
+    </footer>
+
+    <script>
+        // --- FUNCIÓN DE REINICIAR (NUEVA) ---
+        function resetProgress() {
+            if (confirm("¿Estás seguro de que quieres borrar todo tu progreso y volver a la Lección 1? Esta acción no se puede deshacer.")) {
+                localStorage.removeItem('numera_current_lesson');
+                localStorage.removeItem('numera_reward_u1');
+                localStorage.removeItem('numera_reward_u2');
+                localStorage.removeItem('numera_reward_u3');
+                window.location.reload();
+            }
+        }
+
+        let currentLesson = parseInt(localStorage.getItem('numera_current_lesson')) || 1;
+
+        const lessonsData = {
+            1: { title: "CONCEPTOS BÁSICOS", icon: "fa-book-open" },
+            2: { title: "ESTRUCTURAS NUMÉRICAS", icon: "fa-layer-group" },
+            3: { title: "IDENTIFICACIÓN MÉTODOS", icon: "fa-magnifying-glass" },
+            4: { title: "LÓGICA E ITERACIÓN", icon: "fa-rotate-right" },
+            5: { title: "APLICACIÓN PRÁCTICA", icon: "fa-rocket" },
+            6: { title: "MÉTODO BISECCIÓN", icon: "fa-scissors" },
+            7: { title: "NEWTON-RAPHSON", icon: "fa-chart-line" },
+            8: { title: "ELIMINACIÓN GAUSSIANA", icon: "fa-table-cells-large" },
+            9: { title: "GAUSS-SEIDEL", icon: "fa-arrow-rotate-left" },
+            10: { title: "INTEGRACIÓN NUMÉRICA", icon: "fa-wave-square" },
+            11: { title: "RETO: RAÍCES", icon: "fa-bolt" },
+            12: { title: "RETO: SISTEMAS", icon: "fa-network-wired" },
+            13: { title: "RETO: INTEGRALES", icon: "fa-chart-area" },
+            14: { title: "PROBLEMAS MIXTOS", icon: "fa-shuffle" },
+            15: { title: "EXAMEN FINAL", icon: "fa-trophy" }
+        };
+
+        document.addEventListener("DOMContentLoaded", () => {
+            for (let i = 1; i <= 15; i++) {
+                const node = document.getElementById(`node-${i}-container`);
+                if (!node) continue;
+
+                if (i < currentLesson) {
+                    node.innerHTML = `
+                        <div class="stars">⭐⭐⭐</div>
+                        <div class="node completed gold" onclick="window.location.href='leccion${i}.html'" style="cursor: pointer;">
+                            <i class="fa-solid fa-check"></i>
+                        </div>
+                        <span class="node-label">LECCIÓN ${i}<br>${lessonsData[i].title}</span>
+                    `;
+                } else if (i === currentLesson) {
+                    node.className = "node-container current-node-container animate-pop";
+                    node.innerHTML = `
+                        <div class="node current pulse-node" onclick="window.location.href='leccion${i}.html'" style="cursor: pointer;">
+                            <i class="fa-solid ${lessonsData[i].icon}"></i>
+                            <span class="node-title" style="font-size: 10px;">LECCIÓN ${i}</span>
+                            <button class="btn-empezar">¡EMPEZAR!</button>
+                        </div>
+                        <span class="node-label">${lessonsData[i].title}</span>
+                    `;
+                }
+            }
+
+            let xp = (currentLesson - 1) * 150; 
+            document.getElementById('stat-xp').innerHTML = `<i class="fa-solid fa-crown" style="color: #ffc800;"></i> ${xp} XP`;
+
+            const bubble = document.getElementById('mascot-bubble');
+            if (currentLesson === 1) bubble.innerHTML = '¡Hola, Iterauta! <br>Empecemos por lo básico.<br>¡Haz clic en Empezar!';
+            else if (currentLesson <= 5) bubble.innerHTML = `¡Vas excelente!<br>Desbloqueaste la Lección ${currentLesson}.<br>¡Sigue así!`;
+            else if (currentLesson === 6) bubble.innerHTML = '¡BIENVENIDO A LA UNIDAD 2!<br>Hora de ensuciarse las manos con algoritmos.';
+            else if (currentLesson <= 10) bubble.innerHTML = `¡Nivel 2, Lección ${currentLesson}! <br>Estás dominando las matemáticas puras.`;
+            else if (currentLesson === 11) bubble.innerHTML = '¡MODO DIFÍCIL ACTIVADO!<br>Unidad 3: No más tutoriales.<br>¡Aplica lo que sabes!';
+            else if (currentLesson <= 14) bubble.innerHTML = `¡Unidad 3, Reto ${currentLesson - 10}! <br>Analiza la gráfica y elige tu método.`;
+            else if (currentLesson === 15) bubble.innerHTML = '¡LA BATALLA FINAL!<br>Demuestra que eres el maestro absoluto de Numera.';
+            else bubble.innerHTML = '¡MÁSTER NUMÉRICO!<br>Completaste todo el contenido actual de Numera.';
+
+            checkRewards();
+
+            setTimeout(() => {
+                let targetNodeId = currentLesson > 15 ? 15 : currentLesson;
+                let activeNode = document.getElementById(`node-${targetNodeId}-container`);
+                if (activeNode) activeNode.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 300); 
+        });
+
+        let clicks = 0;
+        let currentUnitReward = "";
+
+        function checkRewards() {
+            let unitToReward = 0;
+            if (currentLesson >= 6 && localStorage.getItem('numera_reward_u1') !== 'claimed') unitToReward = 1;
+            else if (currentLesson >= 11 && localStorage.getItem('numera_reward_u2') !== 'claimed') unitToReward = 2;
+            else if (currentLesson >= 16 && localStorage.getItem('numera_reward_u3') !== 'claimed') unitToReward = 3;
+
+            if (unitToReward > 0) {
+                currentUnitReward = unitToReward;
+                document.getElementById('cert-unit-name').innerText = 
+                    unitToReward === 1 ? 'UNIDAD 1: Reconocimiento' : 
+                    unitToReward === 2 ? 'UNIDAD 2: Algoritmos' : 'UNIDAD 3: Retos Finales';
+                
+                document.getElementById('reward-overlay').classList.add('active');
+                initSignaturePad();
+            }
+        }
+
+        function hitChest() {
+            clicks++;
+            const chest = document.getElementById('chest-phase');
+            chest.classList.add('shake');
+            
+            // EFECTO DE SONIDO: Golpe al cofre
+            NumeraAudio.hit(); 
+
+            setTimeout(() => chest.classList.remove('shake'), 300);
+
+            if(clicks === 1) document.getElementById('dot-1').classList.add('active');
+            if(clicks === 2) document.getElementById('dot-2').classList.add('active');
+            
+            if(clicks >= 3) {
+                document.getElementById('dot-3').classList.add('active');
+                
+                // EFECTO DE SONIDO: Fanfarria de victoria
+                NumeraAudio.success(); 
+                
+                // EFECTO VISUAL: Lluvia de confeti con los colores de Numera
+                confetti({
+                    particleCount: 150,
+                    spread: 80,
+                    origin: { y: 0.6 },
+                    colors: ['#ffc800', '#e52b2b', '#58cc02', '#1cb0f6']
+                });
+
+                // Esperamos un segundo extra para que el usuario disfrute el confeti
+                setTimeout(() => {
+                    document.getElementById('chest-phase').style.display = 'none';
+                    document.getElementById('certificate-phase').style.display = 'flex';
+                }, 1200); 
+            }
+        }
+
+        function closeReward() {
+            document.getElementById('reward-overlay').classList.remove('active');
+            localStorage.setItem(`numera_reward_u${currentUnitReward}`, 'claimed');
+            clicks = 0; 
+        }
+
+        let canvas, ctx, isDrawing = false;
+        function initSignaturePad() {
+            canvas = document.getElementById('signature-pad');
+            ctx = canvas.getContext('2d');
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#000080';
+
+            canvas.addEventListener('mousedown', startPosition);
+            canvas.addEventListener('mouseup', endPosition);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseout', endPosition);
+
+            canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startPosition(e.touches[0]); });
+            canvas.addEventListener('touchend', endPosition);
+            canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e.touches[0]); });
+        }
+
+        function getMousePos(evt) {
+            const rect = canvas.getBoundingClientRect();
+            return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
+        }
+
+        function startPosition(e) { isDrawing = true; draw(e); }
+        function endPosition() { isDrawing = false; ctx.beginPath(); }
+        function draw(e) {
+            if (!isDrawing) return;
+            const pos = getMousePos(e);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+        }
+
+        function clearSignature() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+
+        function generatePDF() {
+            const element = document.getElementById('pdf-content');
+            const opt = {
+                margin:       0.3,
+                filename:     `Certificado_Numera_Unidad${currentUnitReward}.pdf`,
+                image:        { type: 'jpeg', quality: 1 },
+                html2canvas:  { scale: 2, useCORS: true, scrollY: 0, scrollX: 0 },
+                jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' }
+            };
+            html2pdf().set(opt).from(element).save();
+        }
+    </script>
+</body>
+</html>

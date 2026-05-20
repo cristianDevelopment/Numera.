@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lección 3: Identificación de Métodos - Numera</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="lesson-body">
+
+    <header class="lesson-header">
+        <a href="mapa.html" class="close-btn"><i class="fa-solid fa-xmark"></i></a>
+        <div class="progress-bar-container">
+            <div class="progress-bar-fill" id="progress-bar"></div>
+        </div>
+        <div class="lives-container">
+            <i class="fa-solid fa-heart pulse-heart" style="color: #ff4b4b;"></i>
+            <span id="lives-count">20</span>
+        </div>
+    </header>
+
+    <main class="lesson-main">
+        <div id="question-container" class="animate-fade-in"></div>
+    </main>
+
+    <footer class="lesson-footer" id="lesson-footer">
+        <div class="footer-content">
+            <div id="feedback-message" class="feedback-message"></div>
+            <button id="check-btn" class="btn-check">COMPROBAR</button>
+        </div>
+    </footer>
+
+    <div id="interstitial-overlay" class="interstitial-overlay interstitial-hidden">
+        <div class="interstitial-content animate-pop">
+            <div class="mascot-large animate-float">🤖</div>
+            <div class="speech-bubble-large" style="margin-top: 20px;">
+                <h1 id="interstitial-title">Título</h1>
+                <p id="interstitial-text">Texto.</p>
+            </div>
+            <button class="btn-start animate-pop-in" onclick="closeInterstitial()" style="margin-top: 40px; border: none; cursor: pointer;">CONTINUAR</button>
+        </div>
+    </div>
+    <script src="audio.js"></script>
+    <script src="leccion3.js"></script>
+</body>
+</html>

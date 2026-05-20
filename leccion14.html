@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lección 14: Problemas Mixtos - Numera</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .svg-graph {
+            width: 100%; max-width: 500px; background: #ffffff;
+            border: 3px solid var(--dark-red); 
+            border-radius: 15px; margin-bottom: 20px; 
+            box-shadow: 0 4px 15px rgba(192, 32, 32, 0.2);
+            display: block; margin-left: auto; margin-right: auto;
+        }
+        .math-table {
+            width: 100%; max-width: 600px; margin: 0 auto 20px auto;
+            border-collapse: collapse; background: white;
+            border-radius: 10px; overflow: hidden;
+            box-shadow: 0 0 0 2px var(--grey-locked);
+        }
+        .math-table th, .math-table td { padding: 12px; text-align: center; border: 1px solid var(--grey-locked); font-size: 18px; font-weight: 700;}
+        .math-table th { background-color: var(--dark-red); color: white; font-weight: 900; }
+        .math-table td.highlight { background-color: #ffe8e8; font-weight: 900; color: var(--primary-red); }
+    </style>
+</head>
+<body class="lesson-body">
+
+    <header class="lesson-header">
+        <a href="mapa.html" class="close-btn"><i class="fa-solid fa-xmark"></i></a>
+        <div class="progress-bar-container">
+            <div class="progress-bar-fill" id="progress-bar" style="background-color: var(--dark-red);"></div>
+        </div>
+        <div class="lives-container">
+            <i class="fa-solid fa-heart pulse-heart" style="color: #ff4b4b;"></i>
+            <span id="lives-count">20</span>
+        </div>
+    </header>
+
+    <main class="lesson-main">
+        <div id="question-container" class="animate-fade-in" style="width: 100%;"></div>
+    </main>
+
+    <footer class="lesson-footer" id="lesson-footer">
+        <div class="footer-content">
+            <div id="feedback-message" class="feedback-message"></div>
+            <button id="check-btn" class="btn-check">COMPROBAR</button>
+        </div>
+    </footer>
+
+    <div id="interstitial-overlay" class="interstitial-overlay interstitial-hidden" style="background-color: var(--dark-red);">
+        <div class="interstitial-content animate-pop">
+            <div class="mascot-large animate-float">🤖</div>
+            <div class="speech-bubble-large" style="margin-top: 20px;">
+                <h1 id="interstitial-title" style="color: var(--dark-red);">Título</h1>
+                <p id="interstitial-text">Texto.</p>
+            </div>
+            <button class="btn-start animate-pop-in" onclick="closeInterstitial()" style="margin-top: 40px; border: none; cursor: pointer; color: var(--dark-red);">CONTINUAR</button>
+        </div>
+    </div>
+    <script src="audio.js"></script>
+    <script src="leccion14.js"></script>
+</body>
+</html>

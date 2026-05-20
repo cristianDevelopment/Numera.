@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Serpientes y Raíces - Multijugador</title>
+    
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="audio.js"></script>
+
+    <style>
+        .game-layout {
+            display: flex;
+            gap: 30px;
+            max-width: 1100px;
+            margin: 0 auto;
+            width: 100%;
+            align-items: flex-start;
+        }
+
+        /* TABLERO (10x10 = 100 casillas) */
+        .board-container {
+            width: 600px;
+            height: 600px;
+            background: #fff;
+            border: 8px solid var(--dark-red);
+            border-radius: 15px;
+            position: relative;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+            flex-shrink: 0;
+            background-image: repeating-linear-gradient(45deg, #f9f9f9 25%, transparent 25%, transparent 75%, #f9f9f9 75%, #f9f9f9), repeating-linear-gradient(45deg, #f9f9f9 25%, #ffffff 25%, #ffffff 75%, #f9f9f9 75%, #f9f9f9);
+            background-position: 0 0, 10px 10px;
+            background-size: 20px 20px;
+        }
+
+        .cell {
+            width: 10%; /* 10 columnas */
+            height: 10%; /* 10 filas */
+            position: absolute;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: 900;
+            font-size: 16px;
+            color: rgba(0,0,0,0.2);
+            border: 1px dashed rgba(0,0,0,0.15);
+            box-sizing: border-box;
+        }
+
+        /* Casillas Especiales */
+        .ladder-cell { background-color: rgba(88, 204, 2, 0.2); border: 2px solid #58cc02; z-index: 1;}
+        .snake-cell { background-color: rgba(229, 43, 43, 0.2); border: 2px solid var(--primary-red); z-index: 1;}
+        .cell-icon { font-size: 20px; position: absolute; opacity: 0.6; }
+
+        /* Fichas de los Jugadores */
+        .player-token {
+            position: absolute;
+            width: 10%;
+            height: 10%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 30px;
+            z-index: 10;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            filter: drop-shadow(0 4px 4px rgba(0,0,0,0.4));
+        }
+
+        /* Desfase para que no se tapen si están en la misma casilla */
+        .player-token.p1 { margin-left: -5px; margin-top: -5px; }
+        .player-token.p2 { margin-left: 5px; margin-top: 5px; }
+
+        .player-jumping { animation: jump 0.4s ease; }
+        @keyframes jump {
+            0% { transform: scale(1) translateY(0); }
+            50% { transform: scale(1.4) translateY(-25px); }
+            100% { transform: scale(1) translateY(0); }
+        }
+
+        /* PANEL DE CONTROL MULTIJUGADOR */
+        .controls-container {
+            flex: 1;
+            background: var(--white);
+            border: 3px solid var(--grey-locked);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .turn-indicator {
+            font-size: 24px;
+            font-weight: 900;
+            padding: 15px;
+            border-radius: 15px;
+            transition: 0.3s;
+            text-transform: uppercase;
+        }
+        .turn-p1 { background-color: #ddf4ff; color: #1cb0f6; border: 2px solid #84d8ff; }
+        .turn-p2 { background-color: #d7ffb8; color: #58cc02; border: 2px solid #58cc02; }
+
+        .dice-area { font-size: 80px; color: var(--text-dark); height: 100px; display: flex; justify-content: center; align-items: center; }
+        .dice-rolling { animation: rollDice 0.3s infinite linear; }
+        @keyframes rollDice {
+            0% { transform: rotate(0deg) scale(1); }
+            50% { transform: rotate(180deg) scale(1.2); }
+            100% { transform: rotate(360deg) scale(1); }
+        }
+
+        .btn-roll {
+            background-color: var(--gold); color: #333; border: none; padding: 15px 30px;
+            font-size: 22px; font-weight: 900; border-radius: 30px; cursor: pointer;
+            box-shadow: 0 6px 0 #cc9e00; transition: 0.2s; text-transform: uppercase;
+        }
+        .btn-roll:active { transform: translateY(6px); box-shadow: 0 0 0 transparent; }
+        .btn-roll:disabled { background-color: var(--grey-locked); color: #afafaf; box-shadow: 0 6px 0 #d5d5d5; cursor: not-allowed; transform: translateY(0); }
+
+        .game-status { font-size: 16px; font-weight: 700; color: var(--text-dark); background: #f0f4f8; padding: 15px; border-radius: 10px; }
+
+        /* MODAL DE PREGUNTAS */
+        .question-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 2000; display: flex; justify-content: center; align-items: center;
+            opacity: 0; pointer-events: none; transition: 0.3s;
+        }
+        .question-modal.active { opacity: 1; pointer-events: all; }
+        .modal-box { background: var(--white); width: 90%; max-width: 500px; border-radius: 20px; padding: 30px; text-align: center; transform: scale(0.8); transition: 0.3s; }
+        .question-modal.active .modal-box { transform: scale(1); }
+
+        .modal-header { font-size: 22px; font-weight: 900; margin-bottom: 5px; }
+        .modal-header.ladder { color: #58cc02; }
+        .modal-header.snake { color: var(--primary-red); }
+        .modal-player-tag { font-size: 14px; font-weight: 900; background: #eee; padding: 5px 10px; border-radius: 10px; display: inline-block; margin-bottom: 15px;}
+        
+        .modal-question { font-size: 18px; font-weight: 700; color: var(--text-dark); margin-bottom: 25px; line-height: 1.4;}
+        .modal-options { display: flex; flex-direction: column; gap: 10px; }
+        .modal-btn { background: #f0f4f8; border: 2px solid var(--grey-locked); padding: 15px; border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; transition: 0.2s; color: var(--text-dark); }
+        .modal-btn:hover { background: #ddf4ff; border-color: #1cb0f6; }
+
+        /* Adaptación a Móviles */
+        @media (max-width: 900px) {
+            .game-layout { flex-direction: column; align-items: center; }
+            .board-container { width: 95vw; height: 95vw; max-width: 500px; max-height: 500px; border-width: 4px; }
+            .cell { font-size: 12px; }
+            .player-token { font-size: 22px; }
+            .controls-container { width: 100%; max-width: 500px; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="navbar">
+        <a href="minijuegos.html" class="brand" style="text-decoration: none; color: inherit;">
+            <i class="fa-solid fa-arrow-left"></i>
+            <span class="brand-name">Arcade</span>
+        </a>
+    </header>
+
+    <main class="main-container" style="display: block; padding-top: 20px;">
+        
+        <div class="arcade-header animate-slide-down" style="margin-bottom: 20px;">
+            <h1>Serpientes y Raíces VS</h1>
+            <p>Tablero de 100 casillas. Compite contra un amigo para ver quién llega primero a la Convergencia Total.</p>
+        </div>
+
+        <div class="game-layout animate-pop">
+            <div class="board-container" id="board">
+                <div class="player-token p1" id="token-p1">🤖</div>
+                <div class="player-token p2" id="token-p2">👽</div>
+            </div>
+
+            <div class="controls-container">
+                <div class="turn-indicator turn-p1" id="turn-banner">
+                    TURNO: JUGADOR 1 🤖
+                </div>
+
+                <div class="dice-area" id="dice-icon"><i class="fa-solid fa-dice"></i></div>
+                <button class="btn-roll" id="btn-roll" onclick="rollDice()">LANZAR DADO</button>
+                
+                <div class="game-status" id="game-status">
+                    🤖 Jugador 1: Casilla 1<br>
+                    👽 Jugador 2: Casilla 1<br><br>
+                    <strong>¡Jugador 1, lanza el dado!</strong>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="question-modal" id="q-modal">
+        <div class="modal-box">
+            <div class="modal-header" id="qm-title">Título</div>
+            <div class="modal-player-tag" id="qm-player-tag">Responde: Jugador X</div>
+            <div class="modal-question" id="qm-text">Pregunta</div>
+            <div class="modal-options" id="qm-options"></div>
+        </div>
+    </div>
+
+    <div id="interstitial-overlay" class="interstitial-overlay interstitial-hidden">
+        <div class="interstitial-content animate-pop">
+            <div class="mascot-large animate-float" id="winner-icon">🏆</div>
+            <div class="speech-bubble-large" style="margin-top: 20px;">
+                <h1 id="interstitial-title" style="color: var(--gold);">¡TENEMOS UN GANADOR!</h1>
+                <p id="interstitial-text">El Jugador X ha dominado los métodos numéricos.</p>
+            </div>
+            <button class="btn-start animate-pop-in" onclick="window.location.reload()" style="margin-top: 40px; border: none; cursor: pointer; background: var(--gold); box-shadow: 0 4px 0 #cc9e00; color: #333;">JUGAR LA REVANCHA</button>
+        </div>
+    </div>
+
+    <script>
+        // CONFIGURACIÓN DEL TABLERO (10x10 = 100)
+        const boardSize = 10;
+        const totalCells = 100;
+        
+        // ESTADO DE LOS JUGADORES
+        let positions = { 1: 1, 2: 1 }; // Jugador 1 y Jugador 2 inician en la casilla 1
+        let currentTurn = 1; 
+        let isMoving = false;
+
+        // TRAMPAS Y ATAJOS EXTENDIDOS (Basados en el clásico Snakes & Ladders de 100)
+        const ladders = { 4: 14, 9: 31, 21: 42, 28: 84, 51: 67, 72: 91, 80: 99 };
+        const snakes = { 17: 7, 54: 34, 62: 19, 64: 60, 87: 36, 93: 73, 95: 75, 98: 79 };
+
+        // BANCO DE PREGUNTAS EXTENDIDO (15 Preguntas Mixtas)
+        const mathQuestions = [
+            { q: "¿Qué método de raíces usa un intervalo [a, b] que debe cambiar de signo?", options: ["Newton-Raphson", "Bisección", "Secante"], ans: 1 },
+            { q: "¿Qué sucede si un método numérico 'Diverge'?", options: ["Se acerca a cero", "Se aleja hacia el infinito", "Encuentra la respuesta correcta"], ans: 1 },
+            { q: "¿Qué método necesita forzosamente calcular la Derivada de la función?", options: ["Bisección", "Newton-Raphson", "Regla de Simpson"], ans: 1 },
+            { q: "En Eliminación Gaussiana, el proceso para evitar dividir entre cero se llama...", options: ["Pivoteo Parcial", "Iteración", "Truncamiento"], ans: 0 },
+            { q: "La diferencia exacta entre el valor real y nuestra aproximación se llama:", options: ["Iteración", "Derivada", "Error Verdadero"], ans: 2 },
+            { q: "¿Qué método iterativo para sistemas de ecuaciones actualiza las variables inmediatamente en la misma iteración?", options: ["Gauss-Seidel", "Cramer", "Regla del Trapecio"], ans: 0 },
+            { q: "El 'Error de Truncamiento' ocurre cuando:", options: ["La computadora redondea decimales", "Cortamos una serie matemática infinita", "Escribimos mal el código"], ans: 1 },
+            { q: "La Regla de Simpson 1/3 aproxima una curva usando polinomios de grado...", options: ["Grado 1 (Recta)", "Grado 2 (Parábola)", "Grado 3 (Cúbica)"], ans: 1 },
+            { q: "¿Qué estructura de programación es indispensable para programar métodos numéricos?", options: ["Ciclos (While / For)", "Bases de Datos", "Estilos CSS"], ans: 0 },
+            { q: "¿Qué tipo de convergencia tiene el Método de Newton-Raphson cuando funciona bien?", options: ["Lineal (Lenta)", "Cuadrática (Muy rápida)", "No converge"], ans: 1 },
+            { q: "Para que el método de Gauss-Seidel converja seguro, la matriz debe ser...", options: ["Diagonalmente Dominante", "Llena de ceros", "Simétrica"], ans: 0 },
+            { q: "En Bisección, si a=2 y b=4, ¿cuál es el primer punto medio 'c'?", options: ["6", "3", "2"], ans: 1 },
+            { q: "¿Qué regla de integración numérica conecta los puntos con simples líneas rectas?", options: ["Regla del Trapecio", "Regla de Simpson", "Cuadratura Gaussiana"], ans: 0 },
+            { q: "Si el error de un cálculo es 0.000001, decimos que el método ha...", options: ["Divergido", "Convergido (Tolerancia alcanzada)", "Fallado"], ans: 1 },
+            { q: "La eliminación hacia atrás (Back Substitution) se usa en...", options: ["Gauss-Seidel", "Eliminación Gaussiana", "Newton-Raphson"], ans: 1 }
+        ];
+
+        let pendingAction = null;
+
+        // 1. GENERAR EL TABLERO GIGANTE
+        const boardElement = document.getElementById('board');
+        const cellCoords = {}; 
+
+        function createBoard() {
+            for (let i = 1; i <= totalCells; i++) {
+                let cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.innerText = i;
+
+                // Patrón Zig-Zag de 10x10
+                let row = Math.floor((i - 1) / boardSize);
+                let col = (i - 1) % boardSize;
+                if (row % 2 !== 0) col = boardSize - 1 - col; 
+
+                let x = col * 10; // 10% por columna
+                let y = (boardSize - 1 - row) * 10; // 10% por fila
+
+                cell.style.left = `${x}%`;
+                cell.style.top = `${y}%`;
+                cellCoords[i] = { x, y };
+
+                if (ladders[i]) {
+                    cell.classList.add('ladder-cell');
+                    cell.innerHTML += '<i class="fa-solid fa-arrow-trend-up cell-icon" style="color:#58cc02;"></i>';
+                }
+                if (snakes[i]) {
+                    cell.classList.add('snake-cell');
+                    cell.innerHTML += '<i class="fa-solid fa-staff-snake cell-icon" style="color:var(--primary-red);"></i>';
+                }
+
+                boardElement.appendChild(cell);
+            }
+            updatePlayerVisual(1, 1); // Colocar J1
+            updatePlayerVisual(2, 1); // Colocar J2
+        }
+
+        // 2. MOVER JUGADORES VISUALMENTE
+        function updatePlayerVisual(playerNum, pos) {
+            const token = document.getElementById(`token-p${playerNum}`);
+            token.style.left = `${cellCoords[pos].x}%`;
+            token.style.top = `${cellCoords[pos].y}%`;
+        }
+
+        function animateMovement(playerNum, steps) {
+            let currentStep = 0;
+            const token = document.getElementById(`token-p${playerNum}`);
+            
+            const interval = setInterval(() => {
+                currentStep++;
+                positions[playerNum]++;
+                
+                if(positions[playerNum] > totalCells) {
+                    positions[playerNum] = totalCells; // Topa en 100
+                }
+                
+                token.classList.add('player-jumping');
+                NumeraAudio.click(); 
+                updatePlayerVisual(playerNum, positions[playerNum]);
+                
+                setTimeout(() => token.classList.remove('player-jumping'), 200);
+
+                if (currentStep >= steps || positions[playerNum] === totalCells) {
+                    clearInterval(interval);
+                    setTimeout(() => checkSquareInfo(playerNum), 500); 
+                }
+            }, 300); // Salto un poco más rápido para tablero grande
+        }
+
+        // 3. LANZAR EL DADO
+        const diceFaces = ['fa-dice-one', 'fa-dice-two', 'fa-dice-three', 'fa-dice-four', 'fa-dice-five', 'fa-dice-six'];
+        
+        function rollDice() {
+            if (isMoving) return;
+            isMoving = true;
+            document.getElementById('btn-roll').disabled = true;
+            
+            const diceIcon = document.getElementById('dice-icon');
+            diceIcon.innerHTML = `<i class="fa-solid fa-dice dice-rolling"></i>`;
+            NumeraAudio.hit(); 
+
+            setTimeout(() => {
+                const roll = Math.floor(Math.random() * 6) + 1; 
+                diceIcon.innerHTML = `<i class="fa-solid ${diceFaces[roll-1]}"></i>`;
+                
+                let icon = currentTurn === 1 ? '🤖' : '👽';
+                document.getElementById('game-status').innerHTML = `Jugador ${currentTurn} ${icon} sacó un <strong>${roll}</strong>. Avanzando...`;
+                
+                animateMovement(currentTurn, roll);
+            }, 1000);
+        }
+
+        // 4. REVISAR CASILLA Y CAMBIO DE TURNO
+        function checkSquareInfo(playerNum) {
+            if (positions[playerNum] === totalCells) {
+                winGame(playerNum);
+                return;
+            }
+
+            if (ladders[positions[playerNum]]) {
+                triggerEvent('ladder', ladders[positions[playerNum]], playerNum);
+            } else if (snakes[positions[playerNum]]) {
+                triggerEvent('snake', snakes[positions[playerNum]], playerNum);
+            } else {
+                nextTurn();
+            }
+        }
+
+        function nextTurn() {
+            currentTurn = currentTurn === 1 ? 2 : 1;
+            
+            const banner = document.getElementById('turn-banner');
+            if (currentTurn === 1) {
+                banner.className = 'turn-indicator turn-p1';
+                banner.innerText = 'TURNO: JUGADOR 1 🤖';
+            } else {
+                banner.className = 'turn-indicator turn-p2';
+                banner.innerText = 'TURNO: JUGADOR 2 👽';
+            }
+
+            document.getElementById('game-status').innerHTML = `
+                🤖 Jugador 1: Casilla ${positions[1]}<br>
+                👽 Jugador 2: Casilla ${positions[2]}<br><br>
+                <strong>¡Jugador ${currentTurn}, lanza el dado!</strong>
+            `;
+
+            isMoving = false;
+            document.getElementById('btn-roll').disabled = false;
+        }
+
+        // 5. EVENTOS Y PREGUNTAS MULTIJUGADOR
+        function triggerEvent(type, targetCell, playerNum) {
+            NumeraAudio.incorrect(); 
+            const modal = document.getElementById('q-modal');
+            const title = document.getElementById('qm-title');
+            const tag = document.getElementById('qm-player-tag');
+            const optionsBox = document.getElementById('qm-options');
+            
+            const q = mathQuestions[Math.floor(Math.random() * mathQuestions.length)];
+            document.getElementById('qm-text').innerText = q.q;
+
+            let pIcon = playerNum === 1 ? '🤖 Jugador 1' : '👽 Jugador 2';
+            tag.innerText = `Responde: ${pIcon}`;
+
+            if (type === 'ladder') {
+                title.className = 'modal-header ladder';
+                title.innerHTML = '<i class="fa-solid fa-arrow-trend-up"></i> ¡ATAJO ENCONTRADO!';
+                pendingAction = { type: 'ladder', target: targetCell, correctIndex: q.ans, pNum: playerNum };
+            } else {
+                title.className = 'modal-header snake';
+                title.innerHTML = '<i class="fa-solid fa-staff-snake"></i> ¡PELIGRO DE DIVERGENCIA!';
+                pendingAction = { type: 'snake', target: targetCell, correctIndex: q.ans, pNum: playerNum };
+            }
+
+            optionsBox.innerHTML = '';
+            q.options.forEach((opt, index) => {
+                optionsBox.innerHTML += `<button class="modal-btn" onclick="answerQuestion(${index})">${opt}</button>`;
+            });
+
+            modal.classList.add('active');
+        }
+
+        window.answerQuestion = function(selectedIndex) {
+            const modal = document.getElementById('q-modal');
+            modal.classList.remove('active');
+
+            const isCorrect = (selectedIndex === pendingAction.correctIndex);
+            const p = pendingAction.pNum;
+
+            if (pendingAction.type === 'ladder') {
+                if (isCorrect) {
+                    NumeraAudio.correct();
+                    alert(`¡Correcto! El Jugador ${p} usa el atajo.`);
+                    positions[p] = pendingAction.target;
+                    updatePlayerVisual(p, positions[p]);
+                } else {
+                    NumeraAudio.incorrect();
+                    alert(`Incorrecto. El Jugador ${p} no supo calcular y pierde el atajo.`);
+                }
+            } else if (pendingAction.type === 'snake') {
+                if (isCorrect) {
+                    NumeraAudio.correct();
+                    alert(`¡Correcto! El Jugador ${p} salvó su iteración del error.`);
+                } else {
+                    NumeraAudio.incorrect();
+                    alert(`Incorrecto. El error matemático arrastra al Jugador ${p} hacia abajo.`);
+                    positions[p] = pendingAction.target;
+                    updatePlayerVisual(p, positions[p]);
+                }
+            }
+
+            nextTurn(); // Cambiar el turno después de contestar
+        }
+
+        // 6. VICTORIA
+        function winGame(playerNum) {
+            NumeraAudio.success();
+            confetti({ particleCount: 300, spread: 150, origin: { y: 0.6 } });
+            
+            document.getElementById('interstitial-overlay').classList.remove('interstitial-hidden');
+            let icon = playerNum === 1 ? '🤖' : '👽';
+            document.getElementById('winner-icon').innerText = icon;
+            document.getElementById('interstitial-text').innerText = `¡El Jugador ${playerNum} es el ganador indiscutible y el Rey de las Iteraciones!`;
+        }
+
+        // Arrancar
+        window.onload = createBoard;
+
+    </script>
+</body>
+</html>

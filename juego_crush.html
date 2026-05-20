@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matriz Crush - Numera</title>
+    
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="audio.js"></script>
+
+    <style>
+        body { background-color: var(--bg-color); }
+
+        .game-layout {
+            display: flex; gap: 30px; max-width: 900px;
+            margin: 0 auto; width: 100%; align-items: flex-start;
+        }
+
+        /* PANEL DE PUNTUACIÓN */
+        .score-panel {
+            flex: 1; background: var(--white); border: 3px solid var(--grey-locked);
+            border-radius: 20px; padding: 30px; text-align: center;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 20px;
+        }
+
+        .score-box { background: #f0f4f8; padding: 20px; border-radius: 15px; border: 2px dashed #c1d3e0; transition: 0.3s;}
+        .score-box.penalty { background: #ffdfe0; border-color: #ea2b2b; }
+
+        .score-title { font-size: 16px; color: var(--text-light); font-weight: 900; text-transform: uppercase; }
+        .score-value { font-size: 48px; color: #1cb0f6; font-weight: 900; transition: 0.3s;}
+        .score-box.penalty .score-value { color: #ea2b2b; }
+        
+        .target-value { font-size: 18px; color: var(--primary-red); font-weight: 700; margin-top: 10px; }
+
+        /* TABLERO MATCH-3 */
+        .board-wrapper {
+            width: 100%; max-width: 450px; aspect-ratio: 1 / 1;
+            background: #1e293b; 
+            border: 8px solid var(--dark-red); border-radius: 15px;
+            padding: 5px; box-shadow: 0 15px 30px rgba(0,0,0,0.3);
+            display: flex; flex-wrap: wrap; flex-shrink: 0; position: relative; overflow: hidden;
+        }
+
+        .gem {
+            width: 12.5%; height: 12.5%; display: flex; justify-content: center; align-items: center;
+            font-size: 24px; font-weight: 900; cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s; box-sizing: border-box; border: 2px solid transparent;
+        }
+
+        .gem-inner {
+            width: 85%; height: 85%; border-radius: 10px; display: flex; justify-content: center; align-items: center;
+            box-shadow: inset 0 -4px 0 rgba(0,0,0,0.2), 0 4px 5px rgba(0,0,0,0.3); user-select: none;
+        }
+
+        .bg-x { background-color: #ff4b4b; color: white; }
+        .bg-y { background-color: #1cb0f6; color: white; }
+        .bg-z { background-color: #58cc02; color: white; }
+        .bg-c { background-color: #ffc800; color: #333; } 
+        .bg-0 { background-color: #a855f7; color: white; border-radius: 50%; } 
+        
+        /* Nueva Gema Educativa */
+        .bg-q { background-color: #0f172a; color: #84d8ff; border: 2px solid #1cb0f6; box-shadow: 0 0 10px #1cb0f6, inset 0 -4px 0 rgba(0,0,0,0.5);}
+
+        .gem.selected .gem-inner {
+            transform: scale(1.1); border: 3px solid white; box-shadow: 0 0 15px white; animation: pulse-gem 1s infinite;
+        }
+
+        @keyframes pulse-gem { 0% { transform: scale(1.1); } 50% { transform: scale(1.2); } 100% { transform: scale(1.1); } }
+
+        .gem.crush { transform: scale(0); opacity: 0; }
+        
+        /* Animación especial para la explosión en cruz de la gema de pregunta */
+        .gem.cross-crush { transform: scale(1.5); opacity: 0; background-color: rgba(28, 176, 246, 0.5); z-index: 10;}
+
+        /* MODALES (Preguntas y Victoria) */
+        .game-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.9); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 2000;
+            opacity: 0; pointer-events: none; transition: 0.3s;
+        }
+        .game-modal.active { opacity: 1; pointer-events: all; }
+
+        .go-box { background: var(--white); padding: 25px; border-radius: 20px; text-align: center; width: 90%; max-width: 500px; transform: scale(0.8); transition: 0.3s; border: 4px solid var(--primary-red); }
+        .game-modal.active .go-box { transform: scale(1); }
+
+        .go-title { font-size: 24px; font-weight: 900; margin-bottom: 5px; text-transform: uppercase;}
+        
+        /* Estilos específicos Pregunta */
+        .q-box { border-color: #1cb0f6; }
+        .q-title { color: #1cb0f6; font-size: 22px; margin-bottom: 15px;}
+        .q-text { font-size: 16px; font-weight: 700; margin-bottom: 20px; color: var(--text-dark); line-height: 1.4;}
+        .q-options { display: flex; flex-direction: column; gap: 10px; }
+        .btn-opt { background: #f0f4f8; border: 2px solid var(--grey-locked); padding: 12px; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; color: var(--text-dark); transition: 0.2s;}
+        .btn-opt:hover { background: #ddf4ff; border-color: #1cb0f6; }
+
+        .btn-start { background: var(--gold); color: #333; border: none; padding: 15px 30px; font-size: 18px; font-weight: 900; border-radius: 30px; cursor: pointer; box-shadow: 0 5px 0 #cc9e00; width: 100%; margin-top: 20px; text-transform: uppercase; }
+        .btn-start:active { transform: translateY(5px); box-shadow: 0 0 0 transparent; }
+
+        @media (max-width: 800px) {
+            .game-layout { flex-direction: column-reverse; align-items: center; }
+            .board-wrapper { width: 95vw; height: 95vw; max-width: 500px; border-width: 4px; padding: 2px;}
+            .gem { font-size: 18px; }
+            .gem-inner { border-radius: 6px; box-shadow: inset 0 -2px 0 rgba(0,0,0,0.2); }
+            .score-panel { width: 100%; max-width: 500px; padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="navbar">
+        <a href="minijuegos.html" class="brand" style="text-decoration: none; color: inherit;">
+            <i class="fa-solid fa-arrow-left"></i>
+            <span class="brand-name">Arcade</span>
+        </a>
+    </header>
+
+    <main class="main-container" style="display: block; padding-top: 20px;">
+        
+        <div class="arcade-header animate-slide-down" style="margin-bottom: 20px;">
+            <h1>Matriz Crush</h1>
+            <p>Combina variables (X, Y, Z) para ejecutar operaciones de fila. ¡Toca las gemas <strong>(❓)</strong> para demostrar tu conocimiento y generar explosiones!</p>
+        </div>
+
+        <div class="game-layout animate-pop">
+            
+            <div class="board-wrapper" id="grid"></div>
+
+            <div class="score-panel">
+                <div class="score-box" id="score-box">
+                    <div class="score-title">Puntuación de Matriz</div>
+                    <div class="score-value" id="score">0</div>
+                    <div class="target-value"><i class="fa-solid fa-bullseye"></i> Meta: 4000 pts</div>
+                </div>
+                
+                <div style="font-size: 14px; color: var(--text-light); text-align: left; background: #f9f9f9; padding: 15px; border-radius: 10px;">
+                    <strong><i class="fa-solid fa-circle-info"></i> Instrucciones:</strong><br><br>
+                    Toca una gema y luego una contigua para intercambiarlas.<br><br>
+                    ⬛ <strong>Gema ❓: TÓCALA directamente.</strong> Responder correctamente activa una bomba de columna y fila.<br>
+                    🟣 = Cero (Vale el triple)<br>
+                    🔴 = Variable X<br>
+                    🔵 = Variable Y<br>
+                    🟢 = Variable Z<br>
+                    🟡 = Constantes
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <div class="game-modal" id="question-modal">
+        <div class="go-box q-box">
+            <h2 class="go-title q-title"><i class="fa-solid fa-brain"></i> PIVOTEO TEÓRICO</h2>
+            <div class="q-text" id="q-text">¿Pregunta?</div>
+            <div class="q-options" id="q-options"></div>
+        </div>
+    </div>
+
+    <div class="game-modal" id="interstitial-overlay">
+        <div class="go-box" style="border-color: var(--gold);">
+            <div style="font-size: 60px; margin-bottom: 10px;">🎉</div>
+            <h1 class="go-title" style="color: var(--gold);">¡MATRIZ TRIANGULADA!</h1>
+            <p style="color: var(--text-dark); font-weight: bold; margin-bottom: 20px;">Has aplicado la Eliminación Gaussiana a la perfección.</p>
+            <button class="btn-start" onclick="window.location.href='minijuegos.html'">VOLVER AL ARCADE</button>
+        </div>
+    </div>
+
+    <script>
+        const matrixQuestions = [
+            { q: "La eliminación hacia atrás (Back Substitution) se usa en...", options: ["Gauss-Seidel", "Eliminación Gaussiana", "Newton"], ans: 1 },
+            { q: "En el pivoteo, buscamos el número...", options: ["Más grande de la columna", "Más pequeño", "Cero"], ans: 0 },
+            { q: "La suma de los elementos de la diagonal principal se llama...", options: ["Traza", "Determinante", "Norma"], ans: 0 },
+            { q: "Si A*B = I, entonces B es la matriz...", options: ["Inversa", "Transpuesta", "Identidad"], ans: 0 },
+            { q: "Un sistema de ecuaciones es 'mal condicionado' cuando...", options: ["Un pequeño cambio en datos da un gran cambio en el resultado", "Tiene infinitas soluciones", "Es muy fácil de resolver"], ans: 0 },
+            { q: "La norma de una matriz mide...", options: ["Su tamaño o magnitud", "El color de sus elementos", "La cantidad de ceros"], ans: 0 },
+            { q: "El método de Cholesky solo se puede aplicar a matrices...", options: ["Simétricas y definidas positivas", "Cualquiera", "Nulas"], ans: 0 },
+            { q: "Para resolver sistemas de ecuaciones no lineales, usamos...", options: ["Newton-Raphson Multivariable", "Eliminación Gaussiana", "Cholesky"], ans: 0 },
+            { q: "El residuo 'r' en un sistema Ax=b se calcula como...", options: ["b - Ax", "Ax + b", "A / b"], ans: 0 },
+            { q: "Si la matriz es 'estrictamente diagonal dominante', el método de Gauss-Seidel...", options: ["Siempre converge", "Siempre diverge", "No se puede usar"], ans: 0 },
+            { q: "La matriz identidad tiene en su diagonal principal...", options: ["Puros unos", "Puros ceros", "Números aleatorios"], ans: 0 },
+            { q: "Un sistema con más incógnitas que ecuaciones tiene...", options: ["Infinitas soluciones o ninguna", "Solución única", "Es imposible de plantear"], ans: 0 },
+            { q: "El rango de una matriz es...", options: ["El número de filas/columnas linealmente independientes", "El valor máximo", "El promedio"], ans: 0 },
+            { q: "La descomposición QR descompone la matriz en una ortogonal y una...", options: ["Triangular Superior", "Diagonal", "Inversa"], ans: 0 },
+            { q: "En Gauss-Seidel, el vector de error en cada iteración suele...", options: ["Decrecer", "Crecer exponencialmente", "Mantenerse constante"], ans: 0 },
+            { q: "Una matriz singular tiene determinante...", options: ["Igual a cero", "Uno", "Infinito"], ans: 0 },
+            { q: "El método de relajación (SOR) introduce un parámetro 'w' para...", options: ["Acelerar la convergencia", "Hacer el código más lento", "Evitar el pivoteo"], ans: 0 },
+            { q: "Para resolver Ax=b mediante inversión, calculamos...", options: ["x = A⁻¹b", "x = Ab", "x = b/A"], ans: 0 },
+            { q: "La descomposición LU es útil cuando necesitamos resolver el sistema para...", options: ["Múltiples vectores 'b' distintos", "Solo un vector 'b'", "Ninguna"], ans: 0 },
+            { q: "La complejidad computacional de Eliminación Gaussiana es...", options: ["O(n³)", "O(n²)", "O(n)"], ans: 0 }
+        ];
+
+        const grid = document.getElementById('grid');
+        const scoreDisplay = document.getElementById('score');
+        const scoreBox = document.getElementById('score-box');
+        const width = 8; 
+        let squares = [];
+        let score = 0;
+        const targetScore = 4000;
+        let isPlaying = true;
+
+        const gemTypes = [
+            { class: 'bg-x', text: 'X' },
+            { class: 'bg-y', text: 'Y' },
+            { class: 'bg-z', text: 'Z' },
+            { class: 'bg-c', text: 'C' },
+            { class: 'bg-0', text: '0' }
+        ];
+
+        // 1. CREAR TABLERO
+        function createBoard() {
+            for (let i = 0; i < width * width; i++) {
+                const square = document.createElement('div');
+                square.setAttribute('id', i);
+                square.classList.add('gem');
+                
+                const inner = document.createElement('div');
+                inner.classList.add('gem-inner');
+                
+                if (Math.random() < 0.05) {
+                    inner.classList.add('bg-q');
+                    inner.innerText = '❓';
+                } else {
+                    let randomGem = Math.floor(Math.random() * gemTypes.length);
+                    inner.classList.add(gemTypes[randomGem].class);
+                    inner.innerText = gemTypes[randomGem].text;
+                }
+                
+                square.appendChild(inner);
+                grid.appendChild(square);
+                squares.push(square);
+
+                square.addEventListener('click', clickGem);
+            }
+        }
+        createBoard();
+
+        // 2. LÓGICA DE INTERACCIÓN
+        let gemOneId = null;
+        let gemTwoId = null;
+        let activeQuestionGemId = null;
+
+        function clickGem() {
+            if (!isPlaying) return;
+
+            let inner = this.querySelector('.gem-inner');
+            
+            if (inner && inner.classList.contains('bg-q')) {
+                activeQuestionGemId = parseInt(this.id);
+                triggerQuestionModal();
+                return;
+            }
+
+            if (gemOneId === null) {
+                gemOneId = parseInt(this.id);
+                this.classList.add('selected');
+                if(typeof NumeraAudio !== 'undefined') NumeraAudio.click();
+            } else {
+                gemTwoId = parseInt(this.id);
+                squares[gemOneId].classList.remove('selected');
+                
+                let validMoves = [ gemOneId - 1, gemOneId + 1, gemOneId - width, gemOneId + width ];
+                const isLeftEdge = (gemOneId % width === 0);
+                const isRightEdge = (gemOneId % width === width - 1);
+                if (isLeftEdge && gemTwoId === gemOneId - 1) validMoves = [];
+                if (isRightEdge && gemTwoId === gemOneId + 1) validMoves = [];
+
+                let isValid = validMoves.includes(gemTwoId);
+
+                if (isValid) {
+                    swapGems(gemOneId, gemTwoId);
+                    if(typeof NumeraAudio !== 'undefined') NumeraAudio.hit();
+                    
+                    isPlaying = false;
+                    setTimeout(() => {
+                        let isMatch = checkMatches();
+                        if (!isMatch) {
+                            swapGems(gemOneId, gemTwoId);
+                            if(typeof NumeraAudio !== 'undefined') NumeraAudio.incorrect();
+                        }
+                        gemOneId = null; gemTwoId = null;
+                        isPlaying = true;
+                    }, 300); 
+                } else {
+                    gemOneId = gemTwoId; gemTwoId = null;
+                    this.classList.add('selected');
+                    if(typeof NumeraAudio !== 'undefined') NumeraAudio.click();
+                }
+            }
+        }
+
+        function swapGems(id1, id2) {
+            let tempInner = squares[id1].innerHTML;
+            squares[id1].innerHTML = squares[id2].innerHTML;
+            squares[id2].innerHTML = tempInner;
+        }
+
+        // 3. LÓGICA EDUCATIVA (MODAL)
+        let currentQuestionAnswer = 0;
+
+        function triggerQuestionModal() {
+            isPlaying = false; 
+            if(typeof NumeraAudio !== 'undefined') NumeraAudio.click();
+            
+            const qIndex = Math.floor(Math.random() * matrixQuestions.length);
+            const qData = matrixQuestions[qIndex];
+            
+            document.getElementById('q-text').innerText = qData.q;
+            currentQuestionAnswer = qData.ans;
+
+            let optsHTML = '';
+            qData.options.forEach((opt, idx) => {
+                optsHTML += `<button class="btn-opt" onclick="processAnswer(${idx})">${opt}</button>`;
+            });
+            document.getElementById('q-options').innerHTML = optsHTML;
+
+            document.getElementById('question-modal').classList.add('active');
+        }
+
+        window.processAnswer = function(selectedIndex) {
+            document.getElementById('question-modal').classList.remove('active');
+            
+            if (selectedIndex === currentQuestionAnswer) {
+                if(typeof NumeraAudio !== 'undefined') NumeraAudio.success();
+                executeCrossCrush(activeQuestionGemId);
+            } else {
+                if(typeof NumeraAudio !== 'undefined') NumeraAudio.incorrect();
+                score -= 50;
+                if(score < 0) score = 0;
+                
+                scoreDisplay.innerHTML = score;
+                scoreBox.classList.add('penalty');
+                setTimeout(() => scoreBox.classList.remove('penalty'), 500);
+                
+                squares[activeQuestionGemId].innerHTML = '';
+                generateRandomGem(activeQuestionGemId);
+            }
+
+            activeQuestionGemId = null;
+            isPlaying = true;
+        }
+
+        function executeCrossCrush(id) {
+            let rowStart = Math.floor(id / width) * width;
+            let colStart = id % width;
+            let toCrush = [];
+
+            for(let i=0; i<width; i++) toCrush.push(rowStart + i);
+            for(let i=0; i<width; i++) toCrush.push(colStart + (i * width));
+
+            toCrush = [...new Set(toCrush)];
+            
+            toCrush.forEach(index => {
+                squares[index].classList.add('cross-crush');
+                score += 15; 
+            });
+
+            scoreDisplay.innerHTML = score;
+            checkWin();
+
+            setTimeout(() => {
+                toCrush.forEach(index => {
+                    squares[index].innerHTML = '';
+                    squares[index].classList.remove('cross-crush');
+                });
+                moveDown();
+            }, 300);
+        }
+
+        // 4. MATCH-3 NORMAL
+        function checkMatches() {
+            let matched = false;
+
+            // Filas
+            for (let i = 0; i < 63; i++) {
+                let rowOfThree = [i, i+1, i+2];
+                let decidedClass = squares[i].querySelector('.gem-inner')?.className;
+                const isBlank = !squares[i].querySelector('.gem-inner');
+                
+                const notValid = [6, 7, 14, 15, 22, 23, 30, 31, 38, 39, 46, 47, 54, 55, 62, 63];
+                if (notValid.includes(i)) continue;
+
+                if (!isBlank && decidedClass && !decidedClass.includes('bg-q') && 
+                    squares[i+1].querySelector('.gem-inner')?.className === decidedClass && 
+                    squares[i+2].querySelector('.gem-inner')?.className === decidedClass) {
+                    
+                    rowOfThree.forEach(index => crushGem(index));
+                    matched = true;
+                }
+            }
+
+            // Columnas
+            for (let i = 0; i < 48; i++) {
+                let columnOfThree = [i, i+width, i+width*2];
+                let decidedClass = squares[i].querySelector('.gem-inner')?.className;
+                const isBlank = !squares[i].querySelector('.gem-inner');
+
+                if (!isBlank && decidedClass && !decidedClass.includes('bg-q') && 
+                    squares[i+width].querySelector('.gem-inner')?.className === decidedClass && 
+                    squares[i+width*2].querySelector('.gem-inner')?.className === decidedClass) {
+                    
+                    columnOfThree.forEach(index => crushGem(index));
+                    matched = true;
+                }
+            }
+
+            if (matched) {
+                if(typeof NumeraAudio !== 'undefined') NumeraAudio.correct();
+                setTimeout(moveDown, 300);
+            }
+            return matched;
+        }
+
+        function crushGem(index) {
+            const inner = squares[index].querySelector('.gem-inner');
+            if (inner) {
+                if (inner.classList.contains('bg-0')) score += 30; 
+                else score += 10;
+                
+                scoreDisplay.innerHTML = score;
+                checkWin();
+
+                squares[index].classList.add('crush');
+                setTimeout(() => {
+                    squares[index].innerHTML = ''; 
+                    squares[index].classList.remove('crush');
+                }, 200);
+            }
+        }
+
+        // 5. CAÍDA Y GENERACIÓN (LÓGICA CORREGIDA)
+        function generateRandomGem(index) {
+            const inner = document.createElement('div');
+            inner.classList.add('gem-inner');
+            
+            if (Math.random() < 0.07) {
+                inner.classList.add('bg-q');
+                inner.innerText = '❓';
+            } else {
+                let randomGem = Math.floor(Math.random() * gemTypes.length);
+                inner.classList.add(gemTypes[randomGem].class);
+                inner.innerText = gemTypes[randomGem].text;
+            }
+            squares[index].appendChild(inner);
+        }
+
+        function moveDown() {
+            let moved = false;
+
+            // Recorremos columna por columna
+            for (let col = 0; col < width; col++) {
+                let colGems = [];
+                
+                // 1. Recolectar todas las gemas existentes (no vacías) en esta columna, de abajo hacia arriba
+                for (let row = width - 1; row >= 0; row--) {
+                    let index = row * width + col;
+                    if (squares[index].innerHTML !== '') {
+                        colGems.push(squares[index].innerHTML);
+                    }
+                }
+
+                // 2. Volver a "apilar" las gemas desde la parte inferior hacia la superior
+                for (let row = width - 1; row >= 0; row--) {
+                    let index = row * width + col;
+                    
+                    if (colGems.length > 0) {
+                        let nextGemHTML = colGems.shift();
+                        if (squares[index].innerHTML !== nextGemHTML) {
+                            squares[index].innerHTML = nextGemHTML;
+                            moved = true;
+                        }
+                    } else {
+                        // Si ya no quedan gemas recolectadas, rellenamos con gemas nuevas
+                        if (squares[index].innerHTML !== '') {
+                            squares[index].innerHTML = '';
+                            moved = true;
+                        }
+                        generateRandomGem(index);
+                        moved = true;
+                    }
+                }
+            }
+
+            // Si las piezas cayeron o se generaron nuevas, verificamos combos en cascada
+            if (moved) {
+                setTimeout(checkMatches, 300);
+            }
+        }
+
+        // 6. VICTORIA
+        function checkWin() {
+            if (score >= targetScore && isPlaying) {
+                isPlaying = false;
+                if(typeof NumeraAudio !== 'undefined') NumeraAudio.success();
+                if(typeof confetti !== 'undefined') confetti({ particleCount: 300, spread: 150, origin: { y: 0.6 } });
+                
+                setTimeout(() => {
+                    document.getElementById('interstitial-overlay').classList.add('active');
+                }, 1000);
+            }
+        }
+
+        let initInterval = setInterval(() => {
+            let matches = checkMatches();
+            if(!matches) clearInterval(initInterval);
+        }, 300);
+
+    </script>
+</body>
+</html>

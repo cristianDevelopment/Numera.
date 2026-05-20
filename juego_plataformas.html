@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salto Numérico - Numera</title>
+    
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="audio.js"></script>
+
+    <style>
+        /* QUitamos el overflow:hidden del body para permitir scroll en celulares */
+        body { background-color: var(--bg-color); }
+
+        .game-layout {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            padding-bottom: 30px;
+        }
+
+        /* CONTENEDOR DEL CANVAS ADAPTATIVO */
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            /* Usamos aspect-ratio para que no se deforme en celulares */
+            aspect-ratio: 2 / 3;
+            max-height: 75vh; 
+            background: linear-gradient(to bottom, #0f172a, #1e293b);
+            border: 6px solid var(--primary-red);
+            border-radius: 20px;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.4);
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* PANTALLA DE ESTADO SUPERIOR */
+        .hud-top {
+            position: absolute; top: 15px; left: 15px; right: 15px;
+            display: flex; justify-content: space-between; align-items: center;
+            z-index: 10; pointer-events: none;
+        }
+
+        .score-display {
+            background: rgba(255, 255, 255, 0.95); color: var(--text-dark);
+            padding: 8px 15px; border-radius: 15px; font-size: 18px;
+            font-weight: 900; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            border: 2px solid var(--grey-locked);
+        }
+
+        /* CONTROLES MÓVILES INVISIBLES */
+        .mobile-controls {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 100%;
+            display: flex; z-index: 5;
+        }
+        .ctrl-left, .ctrl-right { flex: 1; height: 100%; }
+
+        /* --- MODALES --- */
+        .game-modal {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.9); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 20;
+            opacity: 0; pointer-events: none; transition: 0.3s;
+        }
+        .game-modal.active { opacity: 1; pointer-events: all; }
+
+        .go-box {
+            background: var(--white); padding: 25px; border-radius: 20px;
+            text-align: center; width: 90%; transform: scale(0.8); transition: 0.3s;
+            border: 4px solid var(--primary-red);
+        }
+        .game-modal.active .go-box { transform: scale(1); }
+
+        .go-title { font-size: 24px; color: var(--primary-red); font-weight: 900; margin-bottom: 5px; text-transform: uppercase;}
+        .go-score { font-size: 35px; color: var(--gold); font-weight: 900; margin-bottom: 15px; text-shadow: 0 2px 4px rgba(0,0,0,0.2);}
+        
+        /* Botones de menú */
+        .btn-game { background: var(--gold); color: #333; border: none; padding: 12px 20px; font-size: 16px; font-weight: 900; border-radius: 30px; cursor: pointer; box-shadow: 0 5px 0 #cc9e00; width: 100%; margin-bottom: 10px; text-transform: uppercase; }
+        .btn-game:active { transform: translateY(5px); box-shadow: 0 0 0 transparent; }
+        .btn-quit { background: var(--grey-locked); color: var(--text-dark); border: none; padding: 12px 20px; font-size: 16px; font-weight: 900; border-radius: 30px; cursor: pointer; width: 100%; }
+
+        /* Estilos específicos para la Pregunta */
+        .q-box { border-color: #1cb0f6; }
+        .q-title { color: #1cb0f6; font-size: 20px; margin-bottom: 10px;}
+        .q-text { font-size: 16px; font-weight: 700; margin-bottom: 15px; color: var(--text-dark); line-height: 1.3;}
+        .q-options { display: flex; flex-direction: column; gap: 8px; }
+        .btn-opt { background: #f0f4f8; border: 2px solid var(--grey-locked); padding: 10px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; color: var(--text-dark); }
+
+        /* INSTRUCCIONES INICIALES */
+        .start-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 30; text-align: center; padding: 20px;
+        }
+        .start-screen h1 { color: white; font-size: 28px; margin-bottom: 10px;}
+        .start-screen p { color: #ddd; font-size: 14px; margin-bottom: 25px; font-weight: 700;}
+        
+        @media (max-width: 600px) {
+            .arcade-header { margin-bottom: 10px; padding: 0 15px;}
+            .arcade-header h1 { font-size: 24px; margin-bottom: 5px; }
+            .arcade-header p { font-size: 14px; }
+            .canvas-container { border-width: 4px; border-radius: 10px;}
+        }
+    </style>
+</head>
+<body>
+
+    <header class="navbar" id="top-nav">
+        <a href="minijuegos.html" class="brand" style="text-decoration: none; color: inherit;">
+            <i class="fa-solid fa-arrow-left"></i>
+            <span class="brand-name">Arcade</span>
+        </a>
+    </header>
+
+    <main class="main-container" style="display: block; padding-top: 10px;">
+        
+        <div class="arcade-header animate-slide-down">
+            <h1>Salto Numérico</h1>
+            <p>Toca los lados de la pantalla para moverte. ¡Atrapa las plataformas de preguntas (❓) para aprender y ganar súper saltos!</p>
+        </div>
+
+        <div class="game-layout animate-pop">
+            
+            <div class="canvas-container">
+                <div class="start-screen" id="start-screen">
+                    <div style="font-size: 50px; margin-bottom: 10px;">🤖</div>
+                    <h1>Iterauta Jumps</h1>
+                    <p>Móvil: Toca los lados de la pantalla<br>PC: Flechas Izq/Der</p>
+                    <p style="color: #1cb0f6;"><i class="fa-solid fa-circle-info"></i> Las plataformas Azules (❓) pausan el juego para hacerte una pregunta.</p>
+                    <button class="btn-game" onclick="startGame()">¡EMPEZAR ITERACIÓN!</button>
+                </div>
+
+                <canvas id="gameCanvas" width="400" height="600"></canvas>
+                
+                <div class="hud-top">
+                    <div class="score-display">Iteración: <span id="score-text">0</span></div>
+                </div>
+
+                <div class="mobile-controls" id="touch-controls">
+                    <div class="ctrl-left" id="btn-left"></div>
+                    <div class="ctrl-right" id="btn-right"></div>
+                </div>
+
+                <div class="game-modal" id="question-modal">
+                    <div class="go-box q-box">
+                        <h2 class="go-title q-title"><i class="fa-solid fa-brain"></i> Análisis Numérico</h2>
+                        <div class="q-text" id="q-text">¿Pregunta?</div>
+                        <div class="q-options" id="q-options">
+                            </div>
+                    </div>
+                </div>
+
+                <div class="game-modal" id="game-over">
+                    <div class="go-box">
+                        <div style="font-size: 50px; margin-bottom: -10px;">💥</div>
+                        <h2 class="go-title">¡DIVERGENCIA!</h2>
+                        <p style="color: var(--text-light); font-weight: bold; margin-bottom: 5px;">Llegaste a la iteración:</p>
+                        <div class="go-score" id="final-score">0</div>
+                        <button class="btn-game" onclick="startGame()"><i class="fa-solid fa-rotate-right"></i> Reintentar</button>
+                        <button class="btn-quit" onclick="window.location.href='minijuegos.html'"><i class="fa-solid fa-house"></i> Salir</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // --- BANCO DE PREGUNTAS EDUCATIVAS ---
+        // --- BANCO DE PREGUNTAS EDUCATIVAS (50 PREGUNTAS) ---
+        const mathQuestions = [
+            // TEMA 1: Conceptos Básicos y Errores
+            { q: "¿Cuál es el enemigo principal de los métodos numéricos en computadora?", options: ["Error de Truncamiento/Redondeo", "La Tarjeta Madre", "Los números negativos"], ans: 0 },
+            { q: "¿Qué estructura de programación repite código hasta alcanzar la tolerancia?", options: ["Ciclo (While/For)", "Condicional (If)", "Variable local"], ans: 0 },
+            { q: "Si un método no se acerca al resultado y los números crecen sin control, decimos que...", options: ["Diverge", "Converge", "Se trunca"], ans: 0 },
+            { q: "La diferencia matemática entre el valor verdadero y el valor aproximado es el...", options: ["Error Absoluto", "Error Relativo", "Error Porcentual"], ans: 0 },
+            { q: "Cuando cortamos un número infinito de decimales para que quepa en la memoria, generamos un error de...", options: ["Precisión", "Redondeo", "Divergencia"], ans: 1 },
+            { q: "El error de truncamiento ocurre comúnmente al...", options: ["Usar fórmulas aproximadas (como series de Taylor)", "Sumar números enteros", "Apagar la computadora"], ans: 0 },
+            { q: "¿Qué es una iteración?", options: ["Una variable", "Una repetición de un cálculo", "Un tipo de error"], ans: 1 },
+            { q: "Un método converge cuando...", options: ["El error se hace cada vez más pequeño", "El error crece a infinito", "La computadora se congela"], ans: 0 },
+            { q: "La exactitud se refiere a qué tan cerca está el valor calculado del...", options: ["Valor de la iteración anterior", "Valor verdadero", "Valor cero"], ans: 1 },
+            { q: "La precisión se refiere a qué tan cerca están entre sí los...", options: ["Valores verdaderos", "Valores calculados repetidamente", "Errores relativos"], ans: 1 },
+
+            // TEMA 2: Raíces de Ecuaciones
+            { q: "El método de Bisección requiere que la función en los extremos del intervalo...", options: ["Tenga signo contrario (+ y -)", "Sea siempre positiva", "Valga cero"], ans: 0 },
+            { q: "Newton-Raphson utiliza una línea recta para acercarse a la raíz. Esa línea es...", options: ["La recta Tangente (Derivada)", "La recta Secante", "Una Asíntota"], ans: 0 },
+            { q: "¿Qué método de raíces está garantizado a converger siempre (aunque sea muy lento)?", options: ["Newton-Raphson", "Bisección", "Secante"], ans: 1 },
+            { q: "¿Cuál es el riesgo principal del método de Newton-Raphson?", options: ["Que la derivada sea igual a cero", "Que sea demasiado lento", "Que no use derivadas"], ans: 0 },
+            { q: "El método de la Secante se usa cuando...", options: ["No queremos o no podemos calcular la derivada", "Queremos el método más lento", "Solo tenemos números enteros"], ans: 0 },
+            { q: "La Regla Falsa (Falsa Posición) une los extremos del intervalo con una...", options: ["Parábola", "Línea recta", "Curva cúbica"], ans: 1 },
+            { q: "Si la curva es tangencial al eje X, decimos que tiene una...", options: ["Raíz múltiple", "Raíz imaginaria", "Raíz divergente"], ans: 0 },
+            { q: "¿Cuál de estos es un 'Método Abierto' (solo requiere un valor inicial)?", options: ["Bisección", "Regla Falsa", "Newton-Raphson"], ans: 2 },
+            { q: "¿Cuál de estos es un 'Método Cerrado' (requiere un intervalo que encierre la raíz)?", options: ["Secante", "Bisección", "Punto Fijo"], ans: 1 },
+            { q: "El Método Gráfico sirve principalmente para...", options: ["Obtener la raíz exacta con infinitos decimales", "Darnos un valor inicial aproximado visualmente", "Sustituir a la computadora"], ans: 1 },
+
+            // TEMA 3: Sistemas de Ecuaciones Lineales
+            { q: "La Eliminación Gaussiana sirve para resolver...", options: ["Sistemas de Ecuaciones Lineales", "Integrales complejas", "Raíces cuadradas"], ans: 0 },
+            { q: "En Eliminación Gaussiana, el proceso para evitar dividir entre cero se llama...", options: ["Pivoteo Parcial", "Sustitución hacia atrás", "Interpolación"], ans: 0 },
+            { q: "El método de Gauss-Jordan transforma la matriz original en una...", options: ["Matriz Identidad", "Matriz Triangular Superior", "Matriz Nula"], ans: 0 },
+            { q: "Para que el método iterativo de Gauss-Seidel converja, la matriz debe ser...", options: ["Simétrica", "Diagonalmente Dominante", "Cuadrática"], ans: 1 },
+            { q: "¿Cuál es la diferencia entre los métodos de Jacobi y Gauss-Seidel?", options: ["Jacobi es más rápido", "Gauss-Seidel actualiza las variables en la misma iteración", "Jacobi usa derivadas"], ans: 1 },
+            { q: "Si el determinante de un sistema de ecuaciones es cero, significa que...", options: ["El sistema no tiene solución única", "El sistema es muy fácil", "Hay infinitas iteraciones"], ans: 0 },
+            { q: "La factorización LU divide la matriz en dos: una matriz Lower y una...", options: ["Upper", "Universal", "Unit"], ans: 0 },
+            { q: "En Eliminación Gaussiana, despejar las variables desde la última hasta la primera se llama...", options: ["Iteración", "Sustitución hacia atrás", "Pivoteo"], ans: 1 },
+            { q: "El método de Cramer (usando determinantes) es muy malo en programación porque...", options: ["No funciona con decimales", "Requiere demasiadas operaciones para matrices grandes", "Es un método iterativo"], ans: 1 },
+            { q: "A las matrices que están llenas de ceros en su mayoría se les llama...", options: ["Matrices Densas", "Matrices Nulas", "Matrices Dispersas"], ans: 2 },
+
+            // TEMA 4: Integración Numérica
+            { q: "La integración numérica calcula geométricamente...", options: ["La tangente de la curva", "El área bajo la curva", "El cruce por cero"], ans: 1 },
+            { q: "La Regla del Trapecio conecta los puntos de la curva usando...", options: ["Líneas rectas (Polinomio grado 1)", "Parábolas", "Curvas cúbicas"], ans: 0 },
+            { q: "La Regla de Simpson 1/3 conecta los puntos usando...", options: ["Líneas rectas", "Parábolas (Polinomio grado 2)", "Círculos"], ans: 1 },
+            { q: "La Regla de Simpson 3/8 usa polinomios de qué grado?", options: ["Grado 1", "Grado 2", "Grado 3 (Cúbicos)"], ans: 2 },
+            { q: "Para usar la Regla de Simpson 1/3, el número de segmentos 'n' debe ser forzosamente...", options: ["Un número Par", "Un número Impar", "Múltiplo de 3"], ans: 0 },
+            { q: "Para usar la Regla de Simpson 3/8, el número de segmentos 'n' debe ser...", options: ["Un número Par", "Múltiplo de 3", "Primo"], ans: 1 },
+            { q: "Si sumamos el área de muchos trapecios pequeños para mejorar la precisión, aplicamos la regla...", options: ["Del Trapecio Compuesta/Múltiple", "De Simpson", "De Gauss"], ans: 0 },
+            { q: "La Cuadratura de Gauss es especial porque...", options: ["No usa puntos equidistantes (elige los mejores puntos)", "Usa triángulos en vez de trapecios", "Es el método más impreciso"], ans: 0 },
+            { q: "En integración numérica, 'h' representa...", options: ["La altura total", "El tamaño del paso (ancho del segmento)", "La hipotenusa"], ans: 1 },
+            { q: "Si en integración numérica haces 'h' muy pequeño...", options: ["Ganas precisión, pero aumenta el tiempo y error de redondeo", "El área se vuelve negativa", "El código explota"], ans: 0 },
+
+            // TEMA 5: Diferenciación, Interpolación y EDOs
+            { q: "La interpolación sirve para encontrar un valor...", options: ["Fuera de nuestros datos conocidos", "Dentro del rango de nuestros datos conocidos", "Que sea igual a cero"], ans: 1 },
+            { q: "Si estimamos un valor matemático más allá de los puntos de datos que poseemos, estamos haciendo...", options: ["Extrapolación", "Interpolación", "Integración"], ans: 0 },
+            { q: "El método de Diferencias Finitas se utiliza principalmente para resolver numéricamente...", options: ["Integrales", "Derivadas", "Sistemas Lineales"], ans: 1 },
+            { q: "¿Cuál fórmula de diferencias finitas suele ser la más exacta?", options: ["Hacia adelante", "Hacia atrás", "Diferencia Central"], ans: 2 },
+            { q: "Los Polinomios de Lagrange se utilizan para problemas de...", options: ["Derivación", "Interpolación", "Raíces"], ans: 1 },
+            { q: "La Regresión (Mínimos Cuadrados) se diferencia de la Interpolación porque...", options: ["Pasa por todos los puntos obligatoriamente", "No pasa por todos los puntos, solo marca la tendencia", "Solo usa líneas horizontales"], ans: 1 },
+            { q: "El método numérico más simple para resolver Ecuaciones Diferenciales Ordinarias (EDO) es el método de...", options: ["Euler", "Cramer", "Bisección"], ans: 0 },
+            { q: "Para resolver EDOs con mayor precisión en la industria, comúnmente se usa el método de...", options: ["Euler Modificado", "Runge-Kutta de 4to orden (RK4)", "Trapecio"], ans: 1 },
+            { q: "Un Problema de Valor Inicial (PVI) significa que conocemos las condiciones de la ecuación en el tiempo...", options: ["Final", "Cero (t=0)", "Infinito"], ans: 1 },
+            { q: "Si la ecuación describe un fenómeno físico que cambia con el tiempo (como el enfriamiento), modelamos con...", options: ["Mínimos Cuadrados", "Ecuaciones Diferenciales", "Sistemas Lineales"], ans: 1 }
+        ];
+
+        // --- VARIABLES DEL JUEGO ---
+        let width = canvas.width;
+        let height = canvas.height;
+        let score = 0;
+        let gameLoop;
+        let isPlaying = false;
+
+        // Físicas Mejoradas (Más salto, menos gravedad)
+        const gravity = 0.35;
+        const jumpForce = -11;
+        const superJumpForce = -22; 
+        const badJumpForce = -5; // Salto débil como castigo
+        const playerSpeed = 6;
+
+        let player = { x: width / 2, y: height - 100, width: 40, height: 40, vx: 0, vy: 0 };
+
+        // Plataformas (Más juntas para que sean alcanzables)
+        let platforms = [];
+        const platformWidth = 65;
+        const platformHeight = 15;
+        const platformGap = 70; // Espacio vertical entre ellas (Antes 90)
+        let platformCount = 9; // Más plataformas en pantalla
+
+        let keys = { left: false, right: false };
+
+        // --- CONTROLES ---
+        window.addEventListener('keydown', e => {
+            if (e.key === 'ArrowLeft') keys.left = true;
+            if (e.key === 'ArrowRight') keys.right = true;
+        });
+        window.addEventListener('keyup', e => {
+            if (e.key === 'ArrowLeft') keys.left = false;
+            if (e.key === 'ArrowRight') keys.right = false;
+        });
+
+        const btnLeft = document.getElementById('btn-left');
+        const btnRight = document.getElementById('btn-right');
+        
+        btnLeft.addEventListener('touchstart', (e) => { e.preventDefault(); keys.left = true; });
+        btnLeft.addEventListener('touchend', (e) => { e.preventDefault(); keys.left = false; });
+        btnLeft.addEventListener('mousedown', (e) => { e.preventDefault(); keys.left = true; });
+        btnLeft.addEventListener('mouseup', (e) => { e.preventDefault(); keys.left = false; });
+
+        btnRight.addEventListener('touchstart', (e) => { e.preventDefault(); keys.right = true; });
+        btnRight.addEventListener('touchend', (e) => { e.preventDefault(); keys.right = false; });
+        btnRight.addEventListener('mousedown', (e) => { e.preventDefault(); keys.right = true; });
+        btnRight.addEventListener('mouseup', (e) => { e.preventDefault(); keys.right = false; });
+
+        // --- INICIALIZACIÓN ---
+        function createPlatforms() {
+            platforms = [];
+            platforms.push({ x: width/2 - platformWidth/2, y: height - 50, type: 'normal' });
+            
+            for (let i = 1; i < platformCount; i++) {
+                // 10% prob Pregunta (Azul), 10% prob Super (Dorado), 80% Normal (Verde)
+                let rand = Math.random();
+                let pType = 'normal';
+                if(rand < 0.10) pType = 'question';
+                else if (rand < 0.20) pType = 'super';
+
+                platforms.push({
+                    x: Math.random() * (width - platformWidth),
+                    y: height - 50 - (i * platformGap),
+                    type: pType
+                });
+            }
+        }
+
+        function startGame() {
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('game-over').classList.remove('active');
+            document.getElementById('question-modal').classList.remove('active');
+            
+            player.x = width / 2; player.y = height - 150;
+            player.vx = 0; player.vy = 0;
+            score = 0; document.getElementById('score-text').innerText = score;
+            
+            createPlatforms();
+            isPlaying = true;
+            
+            if (gameLoop) cancelAnimationFrame(gameLoop);
+            update();
+        }
+
+        function gameOver() {
+            isPlaying = false;
+            NumeraAudio.gameOver();
+            document.getElementById('final-score').innerText = score;
+            document.getElementById('game-over').classList.add('active');
+        }
+
+        // --- LÓGICA DE PREGUNTAS ---
+        let currentQuestionAnswer = 0;
+
+        function showQuestionModal() {
+            isPlaying = false; // Pausa el juego
+            cancelAnimationFrame(gameLoop);
+            NumeraAudio.incorrect(); // Tono de advertencia
+            
+            const qIndex = Math.floor(Math.random() * mathQuestions.length);
+            const qData = mathQuestions[qIndex];
+            
+            document.getElementById('q-text').innerText = qData.q;
+            currentQuestionAnswer = qData.ans;
+
+            let optsHTML = '';
+            qData.options.forEach((opt, idx) => {
+                optsHTML += `<button class="btn-opt" onclick="processAnswer(${idx})">${opt}</button>`;
+            });
+            document.getElementById('q-options').innerHTML = optsHTML;
+
+            document.getElementById('question-modal').classList.add('active');
+        }
+
+        window.processAnswer = function(selectedIndex) {
+            document.getElementById('question-modal').classList.remove('active');
+            
+            if (selectedIndex === currentQuestionAnswer) {
+                // Correcto: Súper salto como recompensa
+                NumeraAudio.correct();
+                player.vy = superJumpForce;
+                confetti({ particleCount: 100, spread: 70, origin: { y: 0.5 }, zIndex: 3000 });
+            } else {
+                // Incorrecto: Castigo (Salto muy débil que te hará caer)
+                NumeraAudio.incorrect();
+                player.vy = badJumpForce;
+            }
+
+            // Reanudar juego
+            isPlaying = true;
+            update();
+        }
+
+        // --- LÓGICA PRINCIPAL (UPDATE) ---
+        function update() {
+            if (!isPlaying) return;
+
+            // Movimiento Horizontal
+            if (keys.left) player.vx = -playerSpeed;
+            else if (keys.right) player.vx = playerSpeed;
+            else player.vx = 0;
+
+            player.x += player.vx;
+
+            // Teletransporte por los bordes (Efecto Pac-Man)
+            if (player.x + player.width < 0) player.x = width;
+            if (player.x > width) player.x = -player.width;
+
+            // Gravedad
+            player.vy += gravity;
+            player.y += player.vy;
+
+            // Colisiones con plataformas (Solo si cae hacia abajo)
+            if (player.vy > 0) {
+                for (let i = 0; i < platforms.length; i++) {
+                    let p = platforms[i];
+                    
+                    if (player.x + player.width - 10 > p.x && 
+                        player.x + 10 < p.x + platformWidth && 
+                        player.y + player.height > p.y && 
+                        player.y + player.height < p.y + platformHeight + player.vy) {
+                        
+                        if (p.type === 'question') {
+                            p.type = 'normal'; // La convertimos en normal para no volver a pisarla
+                            showQuestionModal();
+                            return; // IMPORTANTE: Corta el update para esperar la respuesta
+                        } 
+                        else if (p.type === 'super') {
+                            player.vy = superJumpForce;
+                            NumeraAudio.success();
+                            confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 }, zIndex: 3000 });
+                        } else {
+                            player.vy = jumpForce;
+                            NumeraAudio.click();
+                        }
+                    }
+                }
+            }
+
+            // Mover cámara
+            if (player.y < height / 2) {
+                let offset = (height / 2) - player.y;
+                player.y = height / 2;
+                
+                score += Math.floor(offset / 10);
+                document.getElementById('score-text').innerText = score;
+
+                for (let i = 0; i < platforms.length; i++) {
+                    platforms[i].y += offset;
+                    
+                    if (platforms[i].y > height) {
+                        platforms[i].y = platforms[i].y - (platformCount * platformGap);
+                        platforms[i].x = Math.random() * (width - platformWidth);
+                        
+                        let rand = Math.random();
+                        if(rand < 0.10) platforms[i].type = 'question';
+                        else if (rand < 0.20) platforms[i].type = 'super';
+                        else platforms[i].type = 'normal';
+                    }
+                }
+            }
+
+            if (player.y > height) {
+                gameOver();
+                return;
+            }
+
+            draw();
+            gameLoop = requestAnimationFrame(update);
+        }
+
+        // --- RENDERIZADO ---
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+
+            for (let i = 0; i < platforms.length; i++) {
+                let p = platforms[i];
+                
+                if (p.type === 'super') {
+                    ctx.fillStyle = '#ffc800'; ctx.fillRect(p.x, p.y, platformWidth, platformHeight);
+                    ctx.fillStyle = '#cc9e00'; ctx.fillRect(p.x, p.y + platformHeight - 4, platformWidth, 4);
+                    ctx.fillStyle = '#333'; ctx.font = '12px Nunito'; ctx.fillText("f'(x)", p.x + 20, p.y + 12);
+                } 
+                else if (p.type === 'question') {
+                    ctx.fillStyle = '#1cb0f6'; ctx.fillRect(p.x, p.y, platformWidth, platformHeight);
+                    ctx.fillStyle = '#1899d6'; ctx.fillRect(p.x, p.y + platformHeight - 4, platformWidth, 4);
+                    ctx.fillStyle = '#fff'; ctx.font = '14px Nunito'; ctx.fillText("❓", p.x + 25, p.y + 12);
+                }
+                else {
+                    ctx.fillStyle = '#58cc02'; ctx.fillRect(p.x, p.y, platformWidth, platformHeight);
+                    ctx.fillStyle = '#46a302'; ctx.fillRect(p.x, p.y + platformHeight - 4, platformWidth, 4);
+                }
+            }
+
+            ctx.font = '35px Arial';
+            ctx.fillText('🤖', player.x, player.y + player.height - 5);
+            
+            if (player.vy > 8) {
+                ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                ctx.fillRect(player.x + 10, player.y - 10, 5, 20);
+                ctx.fillRect(player.x + 25, player.y - 15, 5, 20);
+            }
+        }
+
+        createPlatforms();
+        draw();
+
+    </script>
+</body>
+</html>
