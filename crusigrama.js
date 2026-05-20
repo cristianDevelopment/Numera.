@@ -1,194 +1,267 @@
-// ==========================================
-// MOTOR DEL CRUCIGRAMA NUMÉRICO
-// ==========================================
-
-/* MAPA DEL TABLERO: 10 Filas x 9 Columnas
-  Null = Espacio vacío (negro)
-  Objeto = Cuadro blanco para escribir. 
-  val = Letra correcta / num = Número de pista (opcional) / id = identificador
-*/
-const gridData = [
-    // Fila 1
-    [null, null, null, null, {num: 1, val: 'I', id: 'c1_5'}, null, null, null, null],
-    // Fila 2
-    [null, {num: 2, val: 'N', id: 'c2_2'}, {val: 'E', id: 'c2_3'}, {val: 'W', id: 'c2_4'}, {val: 'T', id: 'c2_5'}, {val: 'O', id: 'c2_6'}, {val: 'N', id: 'c2_7'}, null, null],
-    // Fila 3
-    [null, null, null, null, {val: 'E', id: 'c3_5'}, null, null, null, null],
-    // Fila 4
-    [null, null, {num: 3, val: 'E', id: 'c4_3'}, {val: 'R', id: 'c4_4'}, {val: 'R', id: 'c4_5'}, {val: 'O', id: 'c4_6'}, {val: 'R', id: 'c4_7'}, null, null],
-    // Fila 5
-    [null, null, null, null, {val: 'A', id: 'c5_5'}, {num: 4, val: 'M', id: 'c5_6'}, null, null, null],
-    // Fila 6
-    [null, null, {num: 5, val: 'S', id: 'c6_3'}, {val: 'E', id: 'c6_4'}, {val: 'C', id: 'c6_5'}, {val: 'A', id: 'c6_6'}, {val: 'N', id: 'c6_7'}, {val: 'T', id: 'c6_8'}, {val: 'E', id: 'c6_9'}],
-    // Fila 7
-    [null, null, null, null, {val: 'I', id: 'c7_5'}, {val: 'T', id: 'c7_6'}, null, null, null],
-    // Fila 8
-    [null, null, null, null, {val: 'O', id: 'c8_5'}, {val: 'R', id: 'c8_6'}, null, null, null],
-    // Fila 9
-    [null, null, null, null, {val: 'N', id: 'c9_5'}, {val: 'I', id: 'c9_6'}, null, null, null],
-    // Fila 10
-    [null, null, null, null, null, {val: 'Z', id: 'c10_6'}, null, null, null]
-];
-
-// Mapeo de palabras (Horizontales y Verticales)
-const crosswordWords = [
-    { id: 'H2', cells: ['c2_2', 'c2_3', 'c2_4', 'c2_5', 'c2_6', 'c2_7'] }, // NEWTON
-    { id: 'H3', cells: ['c4_3', 'c4_4', 'c4_5', 'c4_6', 'c4_7'] }, // ERROR
-    { id: 'H5', cells: ['c6_3', 'c6_4', 'c6_5', 'c6_6', 'c6_7', 'c6_8', 'c6_9'] }, // SECANTE
-    { id: 'V1', cells: ['c1_5', 'c2_5', 'c3_5', 'c4_5', 'c5_5', 'c6_5', 'c7_5', 'c8_5', 'c9_5'] }, // ITERACION
-    { id: 'V4', cells: ['c5_6', 'c6_6', 'c7_6', 'c8_6', 'c9_6', 'c10_6'] } // MATRIZ
-];
-
-// Función para obtener la letra correcta esperada en una celda
-function getCorrectLetter(cellId) {
-    for (let row of gridData) {
-        for (let cell of row) {
-            if (cell !== null && cell.id === cellId) {
-                return cell.val;
-            }
-        }
-    }
-    return "";
-}
-
-// EVALUACIÓN DE PALABRAS Y COLOREADO EN TIEMPO REAL
-function updateWordColors() {
-    // A. Limpiar colores verdes previos (sin tocar los rojos de error temporal)
-    gridData.forEach(row => {
-        row.forEach(cell => {
-            if (cell !== null) {
-                const input = document.getElementById(cell.id);
-                if (input.style.backgroundColor !== 'rgb(255, 75, 75)' && input.style.backgroundColor !== '#ff4b4b') {
-                    input.style.removeProperty('background-color');
-                    input.style.removeProperty('color');
-                }
-            }
-        });
-    });
-
-    // B. Verificar qué palabras completas están correctas
-    crosswordWords.forEach(word => {
-        let isWordCorrect = true;
-
-        word.cells.forEach(cellId => {
-            const input = document.getElementById(cellId);
-            const correctLetter = getCorrectLetter(cellId);
-            
-            if (input.value === "" || input.value.toUpperCase() !== correctLetter) {
-                isWordCorrect = false;
-            }
-        });
-
-        // C. Si la fila o columna está perfecta, aplicamos el verde con fuerza (!important)
-        if (isWordCorrect) {
-            word.cells.forEach(cellId => {
-                const input = document.getElementById(cellId);
-                if (input.style.backgroundColor !== 'rgb(255, 75, 75)' && input.style.backgroundColor !== '#ff4b4b') {
-                    input.style.setProperty('background-color', '#d7ffb8', 'important');
-                    input.style.setProperty('color', '#58cc02', 'important');
-                }
-            });
-        }
-    });
-}
-
-// DIBUJAR EL TABLERO
-document.addEventListener("DOMContentLoaded", () => {
-    const gridContainer = document.getElementById('cw-grid');
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crucigrama Numérico - Numera</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
     
-    gridData.forEach(row => {
-        row.forEach(cell => {
-            const cellDiv = document.createElement('div');
-            
-            if (cell === null) {
-                cellDiv.className = 'cw-cell empty';
-            } else {
-                cellDiv.className = 'cw-cell';
-                
-                if (cell.num) {
-                    const numSpan = document.createElement('span');
-                    numSpan.className = 'cw-number';
-                    numSpan.innerText = cell.num;
-                    cellDiv.appendChild(numSpan);
-                }
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.maxLength = 1;
-                input.id = cell.id;
-                
-                input.addEventListener('input', function() {
-                    this.value = this.value.toUpperCase();
-                    if (typeof NumeraAudio !== 'undefined') NumeraAudio.click();
-                    
-                    // Ejecutar comprobación en cada pulsación
-                    updateWordColors();
-                });
-
-                cellDiv.appendChild(input);
-            }
-            gridContainer.appendChild(cellDiv);
-        });
-    });
-});
-
-// VALIDAR TODO EL TABLERO (Botón de comprobación masiva)
-function checkCrossword() {
-    let isCompleteAndCorrect = true;
-    let emptyBoxes = 0;
-
-    gridData.forEach(row => {
-        row.forEach(cell => {
-            if (cell !== null) {
-                const inputElement = document.getElementById(cell.id);
-                const userAnswer = inputElement.value.toUpperCase();
-                
-                if (userAnswer === "") {
-                    emptyBoxes++;
-                    isCompleteAndCorrect = false;
-                } else if (userAnswer !== cell.val) {
-                    isCompleteAndCorrect = false;
-                    
-                    // Pintamos de rojo usando !important para ganarle temporalmente al foco
-                    inputElement.style.setProperty('background-color', '#ff4b4b', 'important');
-                    inputElement.style.setProperty('color', 'white', 'important');
-                    
-                    setTimeout(() => {
-                        inputElement.style.removeProperty('background-color');
-                        inputElement.style.removeProperty('color');
-                        updateWordColors(); // Re-calcular los verdes legítimos
-                    }, 1000);
-                }
-            }
-        });
-    });
-
-    const feedback = document.getElementById('cw-feedback');
-
-    if (emptyBoxes > 0) {
-        if (typeof NumeraAudio !== 'undefined') NumeraAudio.hit();
-        feedback.style.color = '#ff9600';
-        feedback.innerText = "Aún faltan letras por rellenar.";
-    } else if (!isCompleteAndCorrect) {
-        if (typeof NumeraAudio !== 'undefined') NumeraAudio.incorrect();
-        feedback.style.color = '#ff4b4b';
-        feedback.innerText = "Hay algunos errores. Los he marcado en rojo.";
-    } else {
-        if (typeof NumeraAudio !== 'undefined') NumeraAudio.success();
-        feedback.style.color = '#58cc02';
-        feedback.innerText = "¡PERFECTO! Has dominado los conceptos.";
-        
-        if (typeof confetti !== 'undefined') {
-            confetti({
-                particleCount: 150,
-                spread: 80,
-                origin: { y: 0.6 },
-                colors: ['#ffc800', '#58cc02', '#1cb0f6']
-            });
+    <style>
+        .crossword-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 40px;
+            justify-content: center;
+            align-items: flex-start;
+            margin-top: 20px;
+            width: 100%;
         }
 
-        setTimeout(() => {
-            document.getElementById('interstitial-overlay').classList.remove('interstitial-hidden');
-        }, 1000);
-    }
-}
+        /* Estilos del Tablero */
+        .crossword-board {
+            display: grid;
+            grid-template-columns: repeat(9, 45px); /* 9 columnas */
+            grid-template-rows: repeat(10, 45px); /* 10 filas */
+            gap: 2px;
+            background-color: var(--text-dark);
+            padding: 4px;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+
+        .cw-cell {
+            width: 45px;
+            height: 45px;
+            background: var(--white);
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 4px;
+        }
+
+        .cw-cell.empty {
+            background: transparent;
+        }
+
+        .cw-cell input {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: transparent;
+            text-align: center;
+            font-size: 22px;
+            font-weight: 900;
+            text-transform: uppercase;
+            font-family: 'Nunito', sans-serif;
+            color: var(--primary-red);
+            outline: none;
+        }
+
+        .cw-cell input:focus {
+            background-color: #fff2cc;
+            border-radius: 4px;
+        }
+
+        .cw-number {
+            position: absolute;
+            top: 2px;
+            left: 4px;
+            font-size: 11px;
+            font-weight: 900;
+            color: #777;
+            pointer-events: none;
+        }
+
+        /* Estilos de las Pistas */
+        .clues-box {
+            background: var(--white);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            border: 2px solid var(--grey-locked);
+            max-width: 400px;
+        }
+
+        .clues-box h3 {
+            color: var(--primary-red);
+            margin-bottom: 15px;
+            font-size: 20px;
+            border-bottom: 2px dashed #eee;
+            padding-bottom: 5px;
+        }
+
+        .clues-box ul {
+            list-style: none;
+            padding: 0;
+            margin-bottom: 30px;
+        }
+
+        .clues-box li {
+            margin-bottom: 15px;
+            font-size: 15px;
+            color: var(--text-dark);
+            line-height: 1.4;
+        }
+
+        .clues-box li strong {
+            color: var(--gold);
+            font-size: 18px;
+            margin-right: 5px;
+        }
+
+        .btn-resolver {
+            background: var(--primary-red);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: 900;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 5px 0 var(--dark-red);
+            width: 100%;
+            transition: 0.2s;
+        }
+
+        .btn-resolver:active {
+            transform: translateY(5px);
+            box-shadow: 0 0 0 transparent;
+        }
+       /* =========================================
+           ADAPTACIÓN PARA CELULARES (RESPONSIVE) - VERTICAL TOTAL
+           ========================================= */
+        @media (max-width: 600px) {
+            /* --- 1. Forzar diseño vertical de todo el contenedor principal --- */
+            .main-container {
+                display: flex;
+                flex-direction: column; /* 🔥 Apila todo: texto -> crucigrama -> pistas */
+                padding: 20px 10px; /* Un poco menos de espacio lateral */
+                align-items: center; /* Centrar todo el contenido */
+            }
+
+            /* --- 2. Ajustes del Texto Encabezado (Como subtítulo arriba) --- */
+            .cw-header {
+                text-align: center;
+                margin-bottom: 20px; /* 🔥 ESPACIO PARA BAJAR EL CRUCIGRAMA */
+                padding: 0;
+            }
+
+            .cw-header .board-title {
+                font-size: 20px; /* Mucho más pequeño */
+                color: var(--primary-red);
+                margin-bottom: 2px;
+                letter-spacing: 1px;
+            }
+
+            .cw-subtitle {
+                font-size: 13px;
+                line-height: 1.2;
+                max-width: 100%; /* Todo el ancho para el subtítulo */
+            }
+
+            /* --- 3. Forzar que el contenedor del crucigrama también sea columna --- */
+            .crossword-container {
+                display: flex;
+                flex-direction: column; /* 🔥 Apila tablero -> pistas */
+                align-items: center; /* Centra el tablero en el móvil */
+                gap: 20px; /* Espacio entre tablero y pistas */
+                width: 100%;
+            }
+
+            /* --- 4. Ajustes del Tablero (Lo que ya teníamos de pequeño) --- */
+            .crossword-board {
+                grid-template-columns: repeat(9, 35px); /* Reduce de 45px a 35px */
+                grid-template-rows: repeat(10, 35px);
+                margin: 0 auto; /* Centrar el tablero */
+            }
+            
+            .cw-cell {
+                width: 35px;
+                height: 35px;
+            }
+            
+            .cw-cell input {
+                font-size: 18px; 
+            }
+            
+            .cw-number {
+                font-size: 9px;
+                top: 1px;
+                left: 2px;
+            }
+            
+            /* --- 5. Ajustes de las Pistas --- */
+            .clues-box {
+                width: 100%;
+                max-width: 100%;
+                padding: 20px;
+                box-shadow: none; /* Quitamos sombra para que se vea más plano en móvil */
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="navbar">
+        <a href="index.html" class="brand" style="text-decoration: none; color: inherit;">
+            <i class="fa-solid fa-calculator logo-icon"></i>
+            <span class="brand-name">Numera</span>
+        </a>
+       <nav class="nav-links">
+            <a href="mapa.html">APRENDER</a>
+            <a href="crusigrama.html">CRUCIGRAMA</a>
+            <a href="minijuegos.html">MINIJUEGOS</a>
+            <a onclick="resetProgress()" class="btn-reset-nav"><i class="fa-solid fa-rotate-right"></i> REINICIAR</a>
+        </nav>
+    </header>
+
+    <main class="main-container">
+        <div class="cw-header">
+            <h1 class="board-title">GIMNASIO MENTAL</h1>
+            <p class="cw-subtitle">Demuestra tu vocabulario numérico para ganar una medalla de oro.</p>
+        </div>
+
+        <div class="crossword-container">
+            <div id="cw-grid" class="crossword-board animate-pop"></div>
+
+            <div class="clues-box animate-slide-down">
+                <h3><i class="fa-solid fa-arrows-left-right"></i> HORIZONTALES</h3>
+                <ul>
+                    <li><strong>2.</strong> Método abierto muy veloz que utiliza la derivada de la función.</li>
+                    <li><strong>3.</strong> Diferencia numérica entre el valor exacto y nuestra aproximación.</li>
+                    <li><strong>5.</strong> Método que aproxima una tangente trazando una línea entre dos puntos (sin derivar).</li>
+                </ul>
+
+                <h3><i class="fa-solid fa-arrows-up-down"></i> VERTICALES</h3>
+                <ul>
+                    <li><strong>1.</strong> Cada vuelta o repetición de un bucle "while" para acercarse a la solución.</li>
+                    <li><strong>4.</strong> Arreglo bidimensional de números indispensable para la Eliminación Gaussiana.</li>
+                </ul>
+
+                <button class="btn-resolver" onclick="checkCrossword()"><i class="fa-solid fa-check-double"></i> COMPROBAR TABLERO</button>
+                <div id="cw-feedback" style="text-align: center; margin-top: 15px; font-weight: 700; font-size: 16px;"></div>
+            </div>
+        </div>
+    </main>
+
+    <div id="interstitial-overlay" class="interstitial-overlay interstitial-hidden">
+        <div class="interstitial-content animate-pop">
+            <div class="mascot-large animate-float">🧠</div>
+            <div class="speech-bubble-large" style="margin-top: 20px;">
+                <h1 id="interstitial-title" style="color: var(--gold);">¡CEREBRO NUMÉRICO!</h1>
+                <p id="interstitial-text">Resolviste el crucigrama a la perfección. Tu vocabulario técnico es impecable.</p>
+            </div>
+            <button class="btn-start animate-pop-in" onclick="document.getElementById('interstitial-overlay').classList.add('interstitial-hidden');" style="margin-top: 40px; border: none; cursor: pointer; background: var(--gold); box-shadow: 0 4px 0 #cc9e00; color: #333;">SEGUIR APRENDIENDO</button>
+        </div>
+    </div>
+
+    <script src="audio.js"></script>
+    <script src="crusigrama.js"></script>
+</body>
+</html>
